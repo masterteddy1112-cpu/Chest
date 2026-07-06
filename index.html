@@ -127,6 +127,21 @@ button{font-family:inherit;}
 .upload-progress-bar-track{height:5px;border-radius:99px;background:var(--surface-3);overflow:hidden;}
 .upload-progress-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent-2),var(--accent-1));transition:width .08s linear;}
 .upload-progress-pct{font-size:10.5px;color:var(--text-faint);text-align:right;margin-top:2px;}
+.upload-progress-item.is-error .upload-progress-bar-fill{background:var(--danger);}
+.upload-progress-error-msg{font-size:10.5px;color:var(--danger);font-weight:600;margin-top:3px;}
+
+/* Storage badge under filename */
+.f-storage{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;margin-top:1px;}
+.f-storage svg{width:10px;height:10px;flex-shrink:0;}
+.f-storage.st-catbox{color:var(--accent-1);}
+.f-storage.st-rtdb{color:var(--success);}
+.f-storage.st-local{color:var(--text-faint);}
+
+/* Cloud-file card (catbox files with no local viewer) */
+.cloud-card{padding:50px 30px;text-align:center;}
+.cloud-card svg{width:46px;height:46px;color:var(--accent-1);margin-bottom:14px;}
+.cloud-card h3{font-family:var(--font-display);margin:0 0 8px;font-size:16px;}
+.cloud-card p{font-size:13px;color:var(--text-muted);max-width:380px;margin:0 auto 18px;}
 
 .sidebar-footer{padding:10px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-faint);display:flex;justify-content:space-between;}
 
@@ -253,7 +268,7 @@ button{font-family:inherit;}
         <span id="iconUpload"></span>
         <p>Drag files here or <button class="browse-link" id="browseBtn">browse</button></p>
         <input type="file" id="fileInput" multiple hidden>
-        <p class="hint">ISOs, mods, jars, code, zips — anything</p>
+        <p class="hint">ISOs, mods, jars, code, zips — up to 200 MB</p>
       </div>
       <div class="sidebar-toolbar">
         <button class="sort-btn" id="sortBtn">
@@ -369,6 +384,9 @@ const ICONS = {
   dash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 12h12"/></svg>`,
   check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>`,
   chevDown:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`,
+  cloud:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H8a5 5 0 1 1 1.3-9.8A6 6 0 0 1 21 12.5a3.5 3.5 0 0 1-.5 6.5Z"/></svg>`,
+  cloudDownload:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 17H8a5 5 0 1 1 1.3-9.8A6 6 0 0 1 21 10.5a3.5 3.5 0 0 1-.5 6.5Z"/><path d="M12 11v7m0 0-3-3m3 3 3-3"/></svg>`,
+  sync:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-15-6.7L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15 6.7L21 16"/><path d="M21 21v-5h-5"/></svg>`,
 };
 function setIcon(id,name){const el=document.getElementById(id);if(el)el.innerHTML=ICONS[name];}
 setIcon('iconChest','chest');
@@ -498,7 +516,88 @@ let sortField = 'added';
 let sortDir = 'asc';
 let groupBy = 'none';
 
-/* ---------------- Upload progress ---------------- */
+/* ---------------- Cloud sync (Firebase Realtime Database + Catbox.moe) ---------------- */
+const CLOUD_SIZE_CAP = 5 * 1024 * 1024;      // under this: base64 straight into RTDB
+const CATBOX_SIZE_CAP = 200 * 1024 * 1024;   // 5MB–200MB: Catbox.moe, url stored in RTDB
+const CATBOX_UPLOAD_URL = 'https://catbox.moe/user/api.php';
+let db = null; // set once Firebase initializes successfully, see bottom of file
+let firebaseConfiguredFlag = false; // set at bottom of file
+
+const STORAGE_LABEL = {catbox:'Stored in cloud', rtdb:'Synced', local:'Local only'};
+const STORAGE_ICON  = {catbox:'cloud', rtdb:'sync', local:'disk'};
+
+function arrayBufferToBase64(buffer){
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  }
+  return btoa(binary);
+}
+function base64ToArrayBuffer(base64){
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+function filesRef(){
+  return db ? db.ref('files') : null;
+}
+
+// Keeps every client's file list in sync with Firebase, and is also what
+// repopulates the list after a refresh (child_added fires for existing
+// records the moment the listener attaches).
+function initFileSync(){
+  const ref = filesRef();
+  if(!ref) return;
+  ref.on('child_added', snap=>{
+    const key = snap.key;
+    if(files.some(f=>f.id===key)) return; // already have it
+    const data = snap.val();
+    if(!data) return;
+    const storage = data.storage || 'rtdb'; // legacy records had no storage field, but did have base64 data
+    const info = classify(data.name);
+    try{
+      if(storage === 'catbox'){
+        // No bytes to reconstruct — just carry the metadata + Catbox URL.
+        const file = {name: data.name, size: data.size || 0, type: data.type || '', lastModified: data.lastModified || Date.now()};
+        files.push({id: key, file, info, addedAt: data.addedAt || Date.now(), fbKey: key, storage: 'catbox', url: data.url});
+      } else {
+        const buffer = base64ToArrayBuffer(data.data);
+        const file = new File([buffer], data.name, {type: data.type || '', lastModified: data.lastModified || Date.now()});
+        files.push({id: key, file, info, addedAt: data.addedAt || Date.now(), fbKey: key, storage: 'rtdb'});
+      }
+      applySort();
+      renderFileList();
+      if(activeId === null) selectFile(files[0].id);
+    }catch(err){
+      console.error('Failed to decode synced file', data && data.name, err);
+    }
+  });
+  ref.on('child_removed', snap=>{
+    const key = snap.key;
+    const idx = files.findIndex(f=>f.id===key);
+    if(idx === -1) return;
+    const wasActive = files[idx].id === activeId;
+    files.splice(idx, 1);
+    if(wasActive){
+      activeId = null;
+      if(files.length){ selectFile(files[0].id); }
+      else {
+        document.getElementById('viewer').innerHTML = `
+          <div class="empty-state">
+            <span>${ICONS.inbox}</span>
+            <h2>Nothing open yet</h2>
+            <p>Upload a file on the left. Text and code files open in the reader, archives open in the zip viewer, and everything else just shows up as itself.</p>
+          </div>`;
+      }
+    }
+    renderFileList();
+  });
+}
+
+/* ---------------- Upload routing: rtdb (base64) / catbox (url) / reject ---------------- */
 function addFiles(fileListObj){
   const arr = Array.from(fileListObj);
   if(!arr.length) return;
@@ -518,33 +617,155 @@ function addFiles(fileListObj){
 
     const fill = row.querySelector('.upload-progress-bar-fill');
     const pctEl = row.querySelector('.upload-progress-pct');
-    const finish = ()=>{
+
+    // Files over the hard cap are rejected outright — no upload attempt at all.
+    if(f.size > CATBOX_SIZE_CAP){
+      row.classList.add('is-error');
       fill.style.width = '100%';
-      pctEl.textContent = '100%';
-      const info = classify(f.name);
-      files.push({id: 'f'+(idCounter++), file: f, info, addedAt: Date.now()});
-      applySort();
-      renderFileList();
-      if(activeId === null) selectFile(files[0].id);
+      pctEl.textContent = '';
+      const msg = document.createElement('div');
+      msg.className = 'upload-progress-error-msg';
+      msg.textContent = 'Max upload size is 200 MB';
+      row.appendChild(msg);
       setTimeout(()=>{
         row.remove();
         if(!wrap.children.length) wrap.classList.remove('visible');
-      }, 300);
+      }, 3200);
+      return;
+    }
+
+    const setPct = pct=>{
+      fill.style.width = pct + '%';
+      pctEl.textContent = Math.round(pct) + '%';
     };
 
-    // Read the actual file bytes so the progress bar reflects real read progress.
+    const finishRow = (note, isError)=>{
+      setPct(100);
+      if(note){
+        const n = document.createElement('div');
+        n.className = isError ? 'upload-progress-error-msg' : '';
+        n.style.cssText = isError ? '' : 'font-size:10.5px;color:var(--text-muted);margin-top:2px;';
+        n.textContent = note;
+        row.appendChild(n);
+        if(isError) row.classList.add('is-error');
+      }
+      setTimeout(()=>{
+        row.remove();
+        if(!wrap.children.length) wrap.classList.remove('visible');
+      }, note ? 1800 : 300);
+    };
+
+    const addToList = (entry)=>{
+      files.push(entry);
+      applySort();
+      renderFileList();
+      if(activeId === null) selectFile(files[0].id);
+    };
+
+    const info = classify(f.name);
+    const addedAt = Date.now();
+
+    if(f.size >= CLOUD_SIZE_CAP){
+      // 5MB–200MB tier: Catbox.moe direct upload, URL saved to Firebase.
+      uploadToCatbox(f, setPct).then(url=>{
+        const ref = filesRef();
+        if(ref){
+          ref.push({
+            name: f.name, size: f.size, type: f.type || '',
+            lastModified: f.lastModified || addedAt, addedAt,
+            storage: 'catbox', url
+          }).then(()=>{
+            finishRow(null, false); // list updates via child_added listener
+          }).catch(err=>{
+            console.error('Firebase metadata save failed', err);
+            addToList({id:'f'+(idCounter++), file:f, info, addedAt, fbKey:null, storage:'catbox', url});
+            finishRow('Uploaded to cloud, but not synced across devices.', false);
+          });
+        } else {
+          addToList({id:'f'+(idCounter++), file:f, info, addedAt, fbKey:null, storage:'catbox', url});
+          finishRow('Stored in cloud — not synced (Firebase offline).', false);
+        }
+      }).catch(err=>{
+        console.error('Catbox upload failed', err);
+        addToList({id:'f'+(idCounter++), file:f, info, addedAt, fbKey:null, storage:'local'});
+        finishRow('Cloud upload failed — stored locally only.', true);
+      });
+      return;
+    }
+
+    // Under 5MB: read bytes, base64-encode, push straight into Firebase RTDB.
     const reader = new FileReader();
     reader.onprogress = e=>{
-      if(e.lengthComputable){
-        const pct = Math.max(1, Math.round((e.loaded / e.total) * 100));
-        fill.style.width = pct + '%';
-        pctEl.textContent = pct + '%';
-      }
+      if(e.lengthComputable) setPct(Math.max(1, Math.round((e.loaded / e.total) * 90)));
     };
-    reader.onload = finish;
-    reader.onerror = finish;
+    reader.onerror = ()=>{
+      addToList({id:'f'+(idCounter++), file:f, info, addedAt, fbKey:null, storage:'local'});
+      finishRow('Could not read file — stored locally only.', true);
+    };
+    reader.onload = ()=>{
+      const ref = filesRef();
+      if(!ref){
+        addToList({id:'f'+(idCounter++), file:f, info, addedAt, fbKey:null, storage:'local'});
+        finishRow(firebaseConfiguredFlag ? 'Stored locally only — Firebase not connected.' : null, false);
+        return;
+      }
+      const base64 = arrayBufferToBase64(reader.result);
+      ref.push({
+        name: f.name, size: f.size, type: f.type || '',
+        lastModified: f.lastModified || addedAt, addedAt,
+        storage: 'rtdb', data: base64
+      }).then(()=>{
+        finishRow(null, false); // list updates via child_added listener
+      }).catch(err=>{
+        console.error('Firebase upload failed', err);
+        addToList({id:'f'+(idCounter++), file:f, info, addedAt, fbKey:null, storage:'local'});
+        finishRow('Cloud sync failed — stored locally only.', true);
+      });
+    };
     reader.readAsArrayBuffer(f);
   });
+}
+
+// Catbox.moe upload, tied to an account via userhash so files can be deleted later.
+// Leave CATBOX_USERHASH blank to fall back to fully anonymous uploads (no delete capability).
+const CATBOX_USERHASH = '192544a1108005ffbecb9253e';
+
+function uploadToCatbox(file, onProgress){
+  return new Promise((resolve, reject)=>{
+    const xhr = new XMLHttpRequest();
+    const form = new FormData();
+    form.append('reqtype', 'fileupload');
+    if(CATBOX_USERHASH) form.append('userhash', CATBOX_USERHASH);
+    form.append('fileToUpload', file);
+    xhr.open('POST', CATBOX_UPLOAD_URL, true);
+    xhr.upload.onprogress = e=>{
+      if(e.lengthComputable) onProgress(Math.max(1, Math.round((e.loaded / e.total) * 100)));
+    };
+    xhr.onload = ()=>{
+      const text = (xhr.responseText || '').trim();
+      if(xhr.status >= 200 && xhr.status < 300 && text.startsWith('http')){
+        resolve(text);
+      } else {
+        reject(new Error(text || ('Catbox upload failed with status ' + xhr.status)));
+      }
+    };
+    xhr.onerror = ()=> reject(new Error('Network error during Catbox upload'));
+    xhr.send(form);
+  });
+}
+
+// Actually deletes the file off Catbox's servers — only works for files uploaded
+// with a userhash (anonymous uploads can't be deleted via the API at all).
+function deleteFromCatbox(url){
+  if(!CATBOX_USERHASH || !url) return Promise.resolve();
+  const filename = url.split('/').pop();
+  if(!filename) return Promise.resolve();
+  const form = new FormData();
+  form.append('reqtype', 'deletefiles');
+  form.append('userhash', CATBOX_USERHASH);
+  form.append('files', filename);
+  return fetch(CATBOX_UPLOAD_URL, {method:'POST', body: form})
+    .catch(err=>console.error('Catbox delete failed', err));
 }
 
 /* ---------------- Sorting (Windows 11 style: field + order + group by) ---------------- */
@@ -661,7 +882,16 @@ function deleteFile(id){
   const idx = files.findIndex(f=>f.id===id);
   if(idx === -1) return;
   const wasActive = id === activeId;
+  const entry = files[idx];
+  const fbKey = entry.fbKey;
   files.splice(idx, 1);
+  if(entry.storage === 'catbox' && entry.url){
+    deleteFromCatbox(entry.url); // removes the actual file off Catbox, not just the reference
+  }
+  if(fbKey){
+    const ref = filesRef();
+    if(ref) ref.child(fbKey).remove().catch(err=>console.error('Firebase delete failed', err));
+  }
   if(wasActive){
     activeId = null;
     if(files.length){
@@ -700,6 +930,7 @@ function renderFileList(){
         <span class="f-meta">
           <div class="f-name">${escapeHtml(f.file.name)}</div>
           <div class="f-sub">${formatBytes(f.file.size)} · ${f.info.label || (f.info.lang || KIND_LABEL[f.info.kind])}</div>
+          ${f.storage ? `<div class="f-storage st-${f.storage}">${ICONS[STORAGE_ICON[f.storage]]}<span>${STORAGE_LABEL[f.storage]}</span></div>` : ''}
         </span>
         <button class="del-btn" data-del-id="${f.id}" title="Delete file" aria-label="Delete ${escapeHtml(f.file.name)}">${ICONS.trash}</button>
       </div>`;
@@ -725,6 +956,12 @@ function downloadFile(file){
   a.href = url; a.download = file.name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+// Catbox-backed files have no local bytes — the file downloads straight from
+// Catbox's CDN with no server of ours involved.
+function downloadCatboxFile(entry){
+  window.open(entry.url, '_blank');
 }
 
 /* ---------------- Modal ---------------- */
@@ -773,6 +1010,15 @@ async function selectFile(id){
   if(!entry) return;
   const viewer = document.getElementById('viewer');
   const {file, info} = entry;
+
+  if(entry.storage === 'catbox'){
+    viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, ['Stored in cloud']) +
+      `<div class="panel"><div class="cloud-card">${ICONS.cloudDownload}<h3>Stored in the cloud</h3><p>This file was uploaded straight to cloud storage and downloads directly from there — no preview available here.</p>
+      <button class="btn btn-gradient" id="cloudDlBtn">${ICONS.download} Download file</button></div></div>`;
+    document.getElementById('dlBtn').addEventListener('click', ()=>downloadCatboxFile(entry));
+    document.getElementById('cloudDlBtn').addEventListener('click', ()=>downloadCatboxFile(entry));
+    return;
+  }
 
   if(info.kind === 'text' || info.kind === 'code'){
     viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, info.lang ? [info.lang] : []) +
@@ -1045,11 +1291,13 @@ function markOffline(reason){
 }
 
 const firebaseConfigured = !!(FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.apiKey);
+firebaseConfiguredFlag = firebaseConfigured;
 
 if(firebaseConfigured && window.firebase){
   try{
     firebase.initializeApp(FIREBASE_CONFIG);
-    const connectedRef = firebase.database().ref('.info/connected');
+    db = firebase.database();
+    const connectedRef = db.ref('.info/connected');
     let gotFirstValue = false;
     connectedRef.on('value', snap=>{
       gotFirstValue = true;
@@ -1062,6 +1310,8 @@ if(firebaseConfigured && window.firebase){
     }, ()=> markOffline('Could not connect to Firebase Realtime Database — check your config and rules.'));
     // If Firebase never calls back (bad config), fall back to Offline instead of hanging on "Checking…".
     setTimeout(()=>{ if(!gotFirstValue) markOffline('Timed out waiting for Firebase — check your databaseURL and rules.'); }, 6000);
+    // Attach regardless of connection state — writes/listeners queue and sync once connected.
+    initFileSync();
   }catch(err){
     markOffline('Firebase failed to initialize — check your config values.');
   }
