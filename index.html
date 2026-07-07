@@ -268,7 +268,7 @@ button{font-family:inherit;}
         <span id="iconUpload"></span>
         <p>Drag files here or <button class="browse-link" id="browseBtn">browse</button></p>
         <input type="file" id="fileInput" multiple hidden>
-        <p class="hint">ISOs, mods, jars, code, zips — up to 200 MB</p>
+        <p class="hint">ISOs, mods, jars, code, zips — up to 100 MB</p>
       </div>
       <div class="sidebar-toolbar">
         <button class="sort-btn" id="sortBtn">
@@ -518,7 +518,7 @@ let groupBy = 'none';
 
 /* ---------------- Cloud sync (Firebase Realtime Database + Catbox.moe) ---------------- */
 const CLOUD_SIZE_CAP = 5 * 1024 * 1024;      // under this: base64 straight into RTDB
-const CATBOX_SIZE_CAP = 200 * 1024 * 1024;   // 5MB–200MB: Catbox.moe, url stored in RTDB
+const CATBOX_SIZE_CAP = 100 * 1024 * 1024;   // 5MB–100MB: Catbox.moe, url stored in RTDB (Cloudflare Worker caps body size at ~100MB)
 const CATBOX_UPLOAD_URL = 'https://chest-catbox-proxy.masterteddy1112.workers.dev/';
 let db = null; // set once Firebase initializes successfully, see bottom of file
 let firebaseConfiguredFlag = false; // set at bottom of file
@@ -625,7 +625,7 @@ function addFiles(fileListObj){
       pctEl.textContent = '';
       const msg = document.createElement('div');
       msg.className = 'upload-progress-error-msg';
-      msg.textContent = 'Max upload size is 200 MB';
+      msg.textContent = 'Max upload size is 100 MB';
       row.appendChild(msg);
       setTimeout(()=>{
         row.remove();
@@ -666,7 +666,7 @@ function addFiles(fileListObj){
     const addedAt = Date.now();
 
     if(f.size >= CLOUD_SIZE_CAP){
-      // 5MB–200MB tier: Catbox.moe direct upload, URL saved to Firebase.
+      // 5MB–100MB tier: Catbox.moe direct upload, URL saved to Firebase.
       uploadToCatbox(f, setPct).then(url=>{
         const ref = filesRef();
         if(ref){
