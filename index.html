@@ -133,7 +133,7 @@ button{font-family:inherit;}
 /* Storage badge under filename */
 .f-storage{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;margin-top:1px;}
 .f-storage svg{width:10px;height:10px;flex-shrink:0;}
-.f-storage.st-catbox{color:var(--accent-1);}
+.f-storage.st-catbox{color:var(--success);}
 .f-storage.st-rtdb{color:var(--success);}
 .f-storage.st-local{color:var(--text-faint);}
 
@@ -958,10 +958,25 @@ function downloadFile(file){
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
 }
 
-// Catbox-backed files have no local bytes — the file downloads straight from
-// Catbox's CDN with no server of ours involved.
+// Catbox-backed files have no local bytes — fetch the bytes from Catbox's CDN
+// and trigger a real forced download (rather than just opening/navigating to it).
 function downloadCatboxFile(entry){
-  window.open(entry.url, '_blank');
+  fetch(entry.url)
+    .then(res=>{
+      if(!res.ok) throw new Error('status ' + res.status);
+      return res.blob();
+    })
+    .then(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = entry.file.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    })
+    .catch(err=>{
+      console.error('Direct download failed, falling back to opening the file', err);
+      window.open(entry.url, '_blank');
+    });
 }
 
 /* ---------------- Modal ---------------- */
@@ -1003,29 +1018,86 @@ async function readPreview(file){
   return {text, truncated};
 }
 
+// Fetches and caches the real bytes of a Catbox-stored file so it can be
+// previewed exactly like a local file (text/code/zip viewers all need real bytes).
+async function fetchCloudBytes(entry){
+  if(entry._blobFile) return entry._blobFile;
+  const res = await fetch(entry.url);
+  if(!res.ok) throw new Error('status ' + res.status);
+  const blob = await res.blob();
+  const realFile = new File([blob], entry.file.name, {type: entry.file.type || blob.type || '', lastModified: entry.file.lastModified || Date.now()});
+  entry._blobFile = realFile;
+  return realFile;
+}
+
 async function selectFile(id){
   activeId = id;
   renderFileList();
   const entry = files.find(f=>f.id===id);
   if(!entry) return;
   const viewer = document.getElementById('viewer');
-  const {file, info} = entry;
+  const info = entry.info;
+  const isCloud = entry.storage === 'catbox';
+  const cloudTag = isCloud ? ['Stored in cloud'] : [];
+  const meta = entry.file; // name/size/type — always available, even before bytes are fetched
 
-  if(entry.storage === 'catbox'){
-    viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, ['Stored in cloud']) +
-      `<div class="panel"><div class="cloud-card">${ICONS.cloudDownload}<h3>Stored in the cloud</h3><p>This file was uploaded straight to cloud storage and downloads directly from there — no preview available here.</p>
-      <button class="btn btn-gradient" id="cloudDlBtn">${ICONS.download} Download file</button></div></div>`;
-    document.getElementById('dlBtn').addEventListener('click', ()=>downloadCatboxFile(entry));
-    document.getElementById('cloudDlBtn').addEventListener('click', ()=>downloadCatboxFile(entry));
+  // Image/video preview straight from the CDN URL for cloud files — no need to
+  // download the whole file first, the browser streams it directly.
+  if(info.kind === 'image' || info.kind === 'video'){
+    const url = isCloud ? entry.url : URL.createObjectURL(meta);
+    viewer.innerHTML = headerHtml(meta.name, formatBytes(meta.size), info, cloudTag.concat(info.label?[info.label]:[])) +
+      `<div class="panel"><div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind]}${info.kind==='image'?'Image preview':'Video preview'}</span></div>
+      <div class="media-frame">${info.kind==='image'
+        ? `<img src="${url}" alt="${escapeHtml(meta.name)}"${isCloud?' crossorigin="anonymous"':''}>`
+        : `<video src="${url}" controls${isCloud?' crossorigin="anonymous"':''}></video>`}</div></div>`;
+    document.getElementById('dlBtn').addEventListener('click', ()=> isCloud ? downloadCatboxFile(entry) : downloadFile(meta));
     return;
   }
 
+  // Types with no in-browser viewer at all, whether local or cloud — fetching
+  // bytes wouldn't help, so skip straight to a download prompt.
+  if(info.kind === 'disk' || info.kind === 'exec' || info.kind === 'archive-unsupported' || info.kind === 'other'){
+    const messages = {
+      disk: "Disk images can't be mounted or previewed in a browser. Download it and use a tool like a disk-image mounter or burner on your device.",
+      exec: "Executable apps can't be run or previewed here for safety reasons. Download it to run it on your device.",
+      'archive-unsupported': "This archive format isn't supported by the built-in zip viewer. Download it and extract it with a desktop tool, like 7-Zip or The Unarchiver.",
+      other: "Chest doesn't have a viewer for this file type. The file itself is untouched — download it to open it with the right application."
+    };
+    viewer.innerHTML = headerHtml(meta.name, formatBytes(meta.size), info, cloudTag.concat(info.label?[info.label]:[])) +
+      `<div class="panel"><div class="unsupported">${ICONS.ban}<h3>Preview not supported</h3><p>${messages[info.kind]}</p></div></div>`;
+    document.getElementById('dlBtn').addEventListener('click', ()=> isCloud ? downloadCatboxFile(entry) : downloadFile(meta));
+    return;
+  }
+
+  // Everything else (text, code, zip) needs real bytes to preview. Local files
+  // already have them; cloud files need a fetch first.
+  let file = meta;
+  if(isCloud){
+    viewer.innerHTML = headerHtml(meta.name, formatBytes(meta.size), info, cloudTag) +
+      `<div class="panel"><div class="loading-row"><span class="ring"></span>&nbsp; downloading from cloud to preview…</div></div>`;
+    document.getElementById('dlBtn').addEventListener('click', ()=>downloadCatboxFile(entry));
+    try{
+      file = await fetchCloudBytes(entry);
+    }catch(err){
+      console.error('Cloud preview fetch failed', err);
+      if(activeId !== id) return;
+      viewer.innerHTML = headerHtml(meta.name, formatBytes(meta.size), info, cloudTag) +
+        `<div class="panel"><div class="cloud-card">${ICONS.cloudDownload}<h3>Couldn't load preview</h3><p>The file couldn't be fetched for preview right now, but it's safely stored in the cloud — try downloading it directly.</p>
+        <button class="btn btn-gradient" id="cloudDlBtn">${ICONS.download} Download file</button></div></div>`;
+      document.getElementById('dlBtn').addEventListener('click', ()=>downloadCatboxFile(entry));
+      document.getElementById('cloudDlBtn').addEventListener('click', ()=>downloadCatboxFile(entry));
+      return;
+    }
+    if(activeId !== id) return; // user navigated away while we were fetching
+  }
+
   if(info.kind === 'text' || info.kind === 'code'){
-    viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, info.lang ? [info.lang] : []) +
+    viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, cloudTag.concat(info.lang ? [info.lang] : [])) +
       `<div class="panel"><div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind==='code'?'fileCode':'fileText']}${info.kind==='code'?'Code viewer':'Text viewer'}</span></div>
       <div class="loading-row"><span class="ring"></span>&nbsp; reading file…</div></div>`;
-    document.getElementById('dlBtn').addEventListener('click', ()=>downloadFile(file));
+    document.getElementById('dlBtn').addEventListener('click', ()=> isCloud ? downloadCatboxFile(entry) : downloadFile(file));
     const {text, truncated} = await readPreview(file);
+    if(activeId !== id) return;
     let bodyHtml;
     if(info.kind === 'code'){
       let highlighted;
@@ -1042,32 +1114,10 @@ async function selectFile(id){
     return;
   }
 
-  if(info.kind === 'image' || info.kind === 'video'){
-    const url = URL.createObjectURL(file);
-    viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, info.label?[info.label]:[]) +
-      `<div class="panel"><div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind]}${info.kind==='image'?'Image preview':'Video preview'}</span></div>
-      <div class="media-frame">${info.kind==='image'
-        ? `<img src="${url}" alt="${escapeHtml(file.name)}">`
-        : `<video src="${url}" controls></video>`}</div></div>`;
-    document.getElementById('dlBtn').addEventListener('click', ()=>downloadFile(file));
-    return;
-  }
-
   if(info.kind === 'zip'){
-    renderZip(entry);
+    renderZip(Object.assign({}, entry, {file}));
     return;
   }
-
-  // disk / exec / archive-unsupported / other
-  const messages = {
-    disk: "Disk images can't be mounted or previewed in a browser. Download it and use a tool like a disk-image mounter or burner on your device.",
-    exec: "Executable apps can't be run or previewed here for safety reasons. Download it to run it on your device.",
-    'archive-unsupported': "This archive format isn't supported by the built-in zip viewer. Download it and extract it with a desktop tool, like 7-Zip or The Unarchiver.",
-    other: "Chest doesn't have a viewer for this file type. The file itself is untouched — download it to open it with the right application."
-  };
-  viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, info.label?[info.label]:[]) +
-    `<div class="panel"><div class="unsupported">${ICONS.ban}<h3>Preview not supported</h3><p>${messages[info.kind]}</p></div></div>`;
-  document.getElementById('dlBtn').addEventListener('click', ()=>downloadFile(file));
 }
 
 /* ---------------- Zip viewer ---------------- */
