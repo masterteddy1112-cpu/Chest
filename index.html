@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 :root{
   --r-sm:8px; --r-md:14px; --r-lg:20px;
@@ -88,6 +89,7 @@ button{font-family:inherit;}
 .kind-other{background:linear-gradient(135deg,#9AA7B8,#6B7A8D);}
 .kind-image{background:linear-gradient(135deg,#34D399,#1FAE6E);}
 .kind-video{background:linear-gradient(135deg,#F472B6,#C2410C);}
+.kind-model3d{background:linear-gradient(135deg,#FBBF24,#EA580C);}
 
 .sidebar-toolbar{display:flex;align-items:center;gap:6px;padding:8px 12px 0;}
 .sidebar-toolbar .sort-btn{flex:1;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:600;}
@@ -253,7 +255,7 @@ button{font-family:inherit;}
     <div class="brand">
       <span class="chest-icon" id="iconChest"></span>
       <span>Chest<span class="brand-sub">&nbsp; open anything</span></span>
-      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.1</span>
+      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.3</span>
     </div>
     <div class="topbar-actions">
       <div class="status-pill" id="statusPill" title="Firebase connection status">
@@ -389,6 +391,7 @@ const ICONS = {
   cloud:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H8a5 5 0 1 1 1.3-9.8A6 6 0 0 1 21 12.5a3.5 3.5 0 0 1-.5 6.5Z"/></svg>`,
   cloudDownload:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 17H8a5 5 0 1 1 1.3-9.8A6 6 0 0 1 21 10.5a3.5 3.5 0 0 1-.5 6.5Z"/><path d="M12 11v7m0 0-3-3m3 3 3-3"/></svg>`,
   sync:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-15-6.7L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15 6.7L21 16"/><path d="M21 21v-5h-5"/></svg>`,
+  play:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5v15l13-7.5Z"/></svg>`,
 };
 function setIcon(id,name){const el=document.getElementById(id);if(el)el.innerHTML=ICONS[name];}
 setIcon('iconChest','chest');
@@ -445,8 +448,9 @@ const ZIP_EXTS = new Set(['zip','jar','war','ear','mcworld','mcpack','mcaddon','
 const OTHER_ARCHIVE_EXTS = new Set(['rar','7z','tar','gz','tgz','bz2','xz','z']);
 const DISK_EXTS = new Set(['iso','img','dmg','vhd','vhdx','bin']);
 const EXEC_EXTS = new Set(['exe','msi','apk','app','deb','rpm','run','sh.exe']);
-const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','bmp','ico','avif']);
+const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','bmp','ico','avif','svg']);
 const VIDEO_EXTS = new Set(['mp4','webm','ogv','mov','m4v']);
+const MODEL3D_EXTS = new Set(['bbmodel']);
 
 function classify(name){
   const ext = getExt(name);
@@ -455,6 +459,7 @@ function classify(name){
   if(ZIP_EXTS.has(ext)) result = {kind:'zip'};
   else if(IMAGE_EXTS.has(ext)) result = {kind:'image', label: ext.toUpperCase()+' image'};
   else if(VIDEO_EXTS.has(ext)) result = {kind:'video', label: ext.toUpperCase()+' video'};
+  else if(MODEL3D_EXTS.has(ext)) result = {kind:'model3d', label: 'Blockbench model'};
   else if(OTHER_ARCHIVE_EXTS.has(ext)) result = {kind:'archive-unsupported', label: ext.toUpperCase()+' archive'};
   else if(DISK_EXTS.has(ext)) result = {kind:'disk', label: ext.toUpperCase()+' disk image'};
   else if(EXEC_EXTS.has(ext)) result = {kind:'exec', label: ext.toUpperCase()+' executable'};
@@ -467,9 +472,9 @@ function classify(name){
   return result;
 }
 
-const KIND_ICON = {zip:'folderZip', code:'codeGeneric', text:'fileText', disk:'disk', exec:'terminal', 'archive-unsupported':'archive', other:'file', image:'image', video:'video'};
-const KIND_CLASS = {zip:'kind-zip', code:'kind-code', text:'kind-text', disk:'kind-disk', exec:'kind-exec', 'archive-unsupported':'kind-archive-unsupported', other:'kind-other', image:'kind-image', video:'kind-video'};
-const KIND_LABEL = {zip:'Archive', code:'Code', text:'Text', disk:'Disk image', exec:'Executable', 'archive-unsupported':'Archive', other:'File', image:'Image', video:'Video'};
+const KIND_ICON = {zip:'folderZip', code:'codeGeneric', text:'fileText', disk:'disk', exec:'terminal', 'archive-unsupported':'archive', other:'file', image:'image', video:'video', model3d:'grassBlock'};
+const KIND_CLASS = {zip:'kind-zip', code:'kind-code', text:'kind-text', disk:'kind-disk', exec:'kind-exec', 'archive-unsupported':'kind-archive-unsupported', other:'kind-other', image:'kind-image', video:'kind-video', model3d:'kind-model3d'};
+const KIND_LABEL = {zip:'Archive', code:'Code', text:'Text', disk:'Disk image', exec:'Executable', 'archive-unsupported':'Archive', other:'File', image:'Image', video:'Video', model3d:'3D model'};
 
 // Specific icon per extension, layered on top of the kind-level icon/color.
 // "icon" points at a hand-drawn SVG in ICONS; "glyph" renders a short mono-spaced
@@ -1126,7 +1131,50 @@ async function selectFile(id){
     if(activeId !== id) return; // user navigated away while we were fetching
   }
 
+  // Plain .xml files: most are just data/config, but some (like exported SVGs
+  // saved with an .xml extension) actually describe a visual image. Peek at
+  // the root element to tell which one this is.
+  if(info.kind === 'code' && info.ext === 'xml'){
+    viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, cloudTag) +
+      `<div class="panel"><div class="panel-bar"><span class="panel-bar-left">${ICONS.fileCode}Code viewer</span></div>
+      <div class="loading-row"><span class="ring"></span>&nbsp; reading file…</div></div>`;
+    document.getElementById('dlBtn').addEventListener('click', ()=> isCloud ? downloadCatboxFile(entry) : downloadFile(file));
+    const {text, truncated} = await readPreview(file);
+    if(activeId !== id) return;
+    const isSvgShaped = /^\s*(<\?xml[^>]*\?>\s*)?(<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(text);
+    const panel = viewer.querySelector('.panel');
+
+    if(isSvgShaped && !truncated){
+      let viewMode = 'image'; // 'image' | 'code'
+      const highlighted = (()=>{ try{ return hljs.highlight(text, {language:'xml', ignoreIllegals:true}).value; } catch(e){ return escapeHtml(text); } })();
+      const svgUrl = URL.createObjectURL(new Blob([text], {type:'image/svg+xml'}));
+      const renderPanel = ()=>{
+        panel.innerHTML = `<div class="panel-bar">
+          <span class="panel-bar-left">${ICONS.image}Image preview · SVG-in-XML</span>
+          <button class="btn btn-ghost" id="svgToggleBtn">${viewMode==='image'?ICONS.fileCode+' View code':ICONS.image+' View image'}</button>
+          </div>
+          ${viewMode==='image'
+            ? `<div class="media-frame"><img src="${svgUrl}" alt="${escapeHtml(file.name)}"></div>`
+            : `<div class="code-scroll">${lineWrap(highlighted)}</div>`}`;
+        document.getElementById('svgToggleBtn').addEventListener('click', ()=>{ viewMode = viewMode==='image'?'code':'image'; renderPanel(); });
+      };
+      renderPanel();
+      return;
+    }
+
+    // Not an SVG-shaped XML (or too large to safely confirm) — plain code view.
+    let highlighted;
+    try{ highlighted = hljs.highlight(text, {language:'xml', ignoreIllegals:true}).value; }
+    catch(e){ highlighted = escapeHtml(text); }
+    panel.innerHTML = `<div class="panel-bar"><span class="panel-bar-left">${ICONS.fileCode}Code viewer · xml</span></div>
+      <div style="padding:14px 16px 0;"><div class="notice notice-info">${ICONS.info}<span>This XML doesn't describe a visual layout — showing code instead.</span></div></div>
+      ${truncated?`<div style="padding:10px 16px 0;"><div class="notice notice-warn">${ICONS.alert}<span>Showing the first ${formatBytes(MAX_PREVIEW)} of a ${formatBytes(file.size)} file. Download it to read the rest.</span></div></div>`:''}
+      <div class="code-scroll">${lineWrap(highlighted)}</div>`;
+    return;
+  }
+
   if(info.kind === 'text' || info.kind === 'code'){
+    const isRunnable = ['html','htm','xhtml'].includes(info.ext) && meta.size <= 20*1024*1024; // cap live-preview at 20MB to avoid hanging the tab
     viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, cloudTag.concat(info.lang ? [info.lang] : [])) +
       `<div class="panel"><div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind==='code'?'fileCode':'fileText']}${info.kind==='code'?'Code viewer':'Text viewer'}</span></div>
       <div class="loading-row"><span class="ring"></span>&nbsp; reading file…</div></div>`;
@@ -1143,9 +1191,32 @@ async function selectFile(id){
       bodyHtml = lineWrap(escapeHtml(text));
     }
     const panel = viewer.querySelector('.panel');
-    panel.innerHTML = `<div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind==='code'?'fileCode':'fileText']}${info.kind==='code'?'Code viewer · '+info.lang:'Text viewer'}</span></div>
-      ${truncated?`<div style="padding:14px 16px 0;"><div class="notice notice-warn">${ICONS.alert}<span>Showing the first ${formatBytes(MAX_PREVIEW)} of a ${formatBytes(file.size)} file. Download it to read the rest.</span></div></div>`:''}
-      <div class="code-scroll">${bodyHtml}</div>`;
+    let runMode = false;
+    let fullText = truncated ? null : text; // only need the full (untruncated) text when actually running it
+    const renderPanel = ()=>{
+      panel.innerHTML = `<div class="panel-bar">
+        <span class="panel-bar-left">${ICONS[info.kind==='code'?'fileCode':'fileText']}${info.kind==='code'?'Code viewer · '+info.lang:'Text viewer'}</span>
+        ${isRunnable ? `<button class="btn btn-ghost" id="runToggleBtn">${runMode ? ICONS.fileCode : ICONS.play}${runMode ? ' View code' : ' Run preview'}</button>` : ''}
+        </div>
+        ${(truncated && !runMode)?`<div style="padding:14px 16px 0;"><div class="notice notice-warn">${ICONS.alert}<span>Showing the first ${formatBytes(MAX_PREVIEW)} of a ${formatBytes(file.size)} file. Download it to read the rest.</span></div></div>`:''}
+        ${runMode
+          ? `<iframe id="runFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups" style="width:100%;height:62vh;border:none;background:#fff;display:block;"></iframe>`
+          : `<div class="code-scroll">${bodyHtml}</div>`}`;
+      if(isRunnable){
+        document.getElementById('runToggleBtn').addEventListener('click', async ()=>{
+          runMode = !runMode;
+          if(runMode && fullText === null) fullText = await file.text(); // fetch the full file only once, the first time it's actually run
+          renderPanel();
+        });
+        if(runMode) document.getElementById('runFrame').srcdoc = fullText; // set as a property so the raw HTML never has to be escaped into an attribute
+      }
+    };
+    renderPanel();
+    return;
+  }
+
+  if(info.kind === 'model3d'){
+    renderBbmodel(Object.assign({}, entry, {file}));
     return;
   }
 
@@ -1153,6 +1224,180 @@ async function selectFile(id){
     renderZip(Object.assign({}, entry, {file}));
     return;
   }
+}
+
+/* ---------------- Blockbench (.bbmodel) 3D viewer ---------------- */
+// Parses Blockbench's JSON format and renders its cuboid elements with Three.js.
+// This is a best-effort viewer: it supports box elements, per-element rotation,
+// and a single flattened texture — it does not attempt exact per-face Blockbench
+// UV mapping, animations, or "mesh"-type (non-cuboid) elements.
+async function renderBbmodel(entry){
+  const {file, info} = entry;
+  const isCloud = entry.storage === 'catbox';
+  const cloudTag = isCloud ? ['Stored in cloud'] : [];
+  const viewer = document.getElementById('viewer');
+  viewer.innerHTML = headerHtml(file.name, formatBytes(file.size), info, cloudTag) +
+    `<div class="panel"><div class="loading-row"><span class="ring"></span>&nbsp; reading model…</div></div>`;
+  document.getElementById('dlBtn').addEventListener('click', ()=> isCloud ? downloadCatboxFile(entry) : downloadFile(file));
+
+  let raw, model;
+  try{
+    raw = await file.text();
+    model = JSON.parse(raw);
+  }catch(err){
+    viewer.querySelector('.panel').innerHTML = `<div class="unsupported">${ICONS.alert}<h3>Couldn't read this model</h3><p>The file isn't valid Blockbench JSON, or it's corrupted. Try downloading and opening it directly in Blockbench.</p></div>`;
+    return;
+  }
+
+  const panel = viewer.querySelector('.panel');
+  const elements = Array.isArray(model.elements) ? model.elements : [];
+  const cubes = elements.filter(el => !el.type || el.type === 'cube');
+  const skippedMeshCount = elements.length - cubes.length;
+
+  let viewMode = '3d'; // '3d' | 'json'
+  const highlightedJson = (()=>{ try{ return hljs.highlight(raw, {language:'json', ignoreIllegals:true}).value; } catch(e){ return escapeHtml(raw); } })();
+
+  const renderChrome = ()=>{
+    panel.innerHTML = `<div class="panel-bar">
+      <span class="panel-bar-left">${ICONS.grassBlock}3D model preview${skippedMeshCount ? ` · ${cubes.length}/${elements.length} elements shown` : ''}</span>
+      <button class="btn btn-ghost" id="bbToggleBtn">${viewMode==='3d'?ICONS.fileCode+' View JSON':ICONS.grassBlock+' View 3D'}</button>
+      </div>
+      ${skippedMeshCount ? `<div style="padding:14px 16px 0;"><div class="notice notice-info">${ICONS.info}<span>${skippedMeshCount} non-cuboid ("mesh") element${skippedMeshCount===1?'':'s'} in this model can't be shown by this viewer yet — only box elements render.</span></div></div>` : ''}
+      ${viewMode==='3d'
+        ? `<div id="bbCanvasWrap" style="width:100%;height:62vh;background:#1a1d24;position:relative;overflow:hidden;cursor:grab;"></div>`
+        : `<div class="code-scroll">${lineWrap(highlightedJson)}</div>`}`;
+    document.getElementById('bbToggleBtn').addEventListener('click', ()=>{
+      viewMode = viewMode==='3d' ? 'json' : '3d';
+      renderChrome();
+      if(viewMode==='3d') mount3D();
+    });
+    if(viewMode==='3d') mount3D();
+  };
+
+  let stopLoop = null;
+  function mount3D(){
+    if(stopLoop) stopLoop(); // tear down any previous instance before remounting
+    const wrap = document.getElementById('bbCanvasWrap');
+    if(!wrap || typeof THREE === 'undefined') return;
+
+    if(!cubes.length){
+      wrap.innerHTML = `<div class="unsupported" style="padding:34px 24px;">${ICONS.ban}<h3>Nothing to show</h3><p>This model has no cuboid elements this viewer can render.</p></div>`;
+      return;
+    }
+
+    const width = wrap.clientWidth, height = wrap.clientHeight;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1d24);
+    const camera = new THREE.PerspectiveCamera(45, width/height, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    wrap.innerHTML = '';
+    wrap.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.6);
+    dir.position.set(4, 6, 5);
+    scene.add(dir);
+
+    // Blockbench textures are embedded as base64 data URIs — use the first
+    // one (if any) as a flat texture across all cubes, nearest-filtered to
+    // keep the pixel-art look. Exact per-face UV mapping isn't attempted.
+    let material;
+    const firstTex = Array.isArray(model.textures) && model.textures[0] && model.textures[0].source;
+    if(firstTex){
+      const tex = new THREE.TextureLoader().load(firstTex);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      material = new THREE.MeshLambertMaterial({map: tex});
+    } else {
+      material = new THREE.MeshLambertMaterial({color: 0x8fa6c9});
+    }
+
+    const group = new THREE.Group();
+    const BB_UNIT = 16; // Blockbench uses 16 units per block, purely a scale convention
+    const box = new THREE.Box3();
+    cubes.forEach(el=>{
+      const from = el.from || [0,0,0], to = el.to || [1,1,1];
+      const size = [Math.max(0.001,(to[0]-from[0])/BB_UNIT), Math.max(0.001,(to[1]-from[1])/BB_UNIT), Math.max(0.001,(to[2]-from[2])/BB_UNIT)];
+      const center = [(from[0]+to[0])/2/BB_UNIT, (from[1]+to[1])/2/BB_UNIT, (from[2]+to[2])/2/BB_UNIT];
+      const geo = new THREE.BoxGeometry(size[0], size[1], size[2]);
+      const mesh = new THREE.Mesh(geo, material);
+      const pivot = new THREE.Group();
+      if(el.rotation && Array.isArray(el.rotation)){
+        const origin = el.origin || center.map(c=>c*BB_UNIT);
+        pivot.position.set(origin[0]/BB_UNIT, origin[1]/BB_UNIT, origin[2]/BB_UNIT);
+        mesh.position.set(center[0]-pivot.position.x, center[1]-pivot.position.y, center[2]-pivot.position.z);
+        pivot.rotation.set(THREE.MathUtils.degToRad(el.rotation[0]||0), THREE.MathUtils.degToRad(el.rotation[1]||0), THREE.MathUtils.degToRad(el.rotation[2]||0));
+      } else {
+        mesh.position.set(center[0], center[1], center[2]);
+      }
+      pivot.add(mesh);
+      group.add(pivot);
+    });
+
+    // Recenter the whole model around the origin so the camera framing below is consistent.
+    box.setFromObject(group);
+    const modelCenter = new THREE.Vector3();
+    box.getCenter(modelCenter);
+    group.position.sub(modelCenter);
+    scene.add(group);
+
+    const modelSize = new THREE.Vector3();
+    box.getSize(modelSize);
+    const radius = Math.max(0.6, modelSize.length()) * 1.6;
+    camera.position.set(radius*0.7, radius*0.55, radius*0.7);
+    camera.lookAt(0,0,0);
+
+    // Lightweight manual orbit: drag to rotate, wheel to zoom — avoids pulling
+    // in the separate OrbitControls addon just for this one viewer.
+    let yaw = Math.atan2(camera.position.x, camera.position.z);
+    let pitch = Math.atan2(camera.position.y, Math.hypot(camera.position.x, camera.position.z));
+    let dist = camera.position.length();
+    let dragging = false, lastX = 0, lastY = 0;
+    const updateCam = ()=>{
+      pitch = Math.max(-1.4, Math.min(1.4, pitch));
+      camera.position.set(
+        dist * Math.cos(pitch) * Math.sin(yaw),
+        dist * Math.sin(pitch),
+        dist * Math.cos(pitch) * Math.cos(yaw)
+      );
+      camera.lookAt(0,0,0);
+    };
+    updateCam();
+    const onDown = e=>{ dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.style.cursor = 'grabbing'; };
+    const onUp = ()=>{ dragging = false; wrap.style.cursor = 'grab'; };
+    const onMove = e=>{
+      if(!dragging) return;
+      yaw -= (e.clientX - lastX) * 0.008;
+      pitch += (e.clientY - lastY) * 0.008;
+      lastX = e.clientX; lastY = e.clientY;
+      updateCam();
+    };
+    const onWheel = e=>{
+      e.preventDefault();
+      dist = Math.max(radius*0.3, Math.min(radius*3, dist * (1 + e.deltaY*0.001)));
+      updateCam();
+    };
+    renderer.domElement.addEventListener('mousedown', onDown);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('mousemove', onMove);
+    renderer.domElement.addEventListener('wheel', onWheel, {passive:false});
+
+    let raf;
+    (function animate(){ raf = requestAnimationFrame(animate); renderer.render(scene, camera); })();
+
+    stopLoop = ()=>{
+      cancelAnimationFrame(raf);
+      renderer.domElement.removeEventListener('mousedown', onDown);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mousemove', onMove);
+      renderer.domElement.removeEventListener('wheel', onWheel);
+      renderer.dispose();
+    };
+  }
+
+  renderChrome();
 }
 
 /* ---------------- Zip viewer ---------------- */
