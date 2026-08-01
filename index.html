@@ -126,7 +126,8 @@ button{font-family:inherit;}
 .upload-progress-name{font-size:11.5px;font-weight:600;color:var(--text-muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .upload-progress-bar-track{height:5px;border-radius:99px;background:var(--surface-3);overflow:hidden;}
 .upload-progress-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent-2),var(--accent-1));transition:width .08s linear;}
-.upload-progress-pct{font-size:10.5px;color:var(--text-faint);text-align:right;margin-top:2px;}
+.upload-progress-pct{font-size:10.5px;color:var(--text-faint);display:flex;justify-content:space-between;gap:8px;margin-top:2px;}
+.upload-progress-pct span{white-space:nowrap;}
 .upload-progress-item.is-error .upload-progress-bar-fill{background:var(--danger);}
 .upload-progress-error-msg{font-size:10.5px;color:var(--danger);font-weight:600;margin-top:3px;}
 
@@ -139,7 +140,7 @@ button{font-family:inherit;}
 
 /* Cloud-file card (catbox files with no local viewer) */
 .cloud-card{padding:50px 30px;text-align:center;}
-.cloud-card svg{width:46px;height:46px;color:var(--accent-1);margin-bottom:14px;}
+.cloud-card > svg{width:46px;height:46px;color:var(--accent-1);margin-bottom:14px;}
 .cloud-card h3{font-family:var(--font-display);margin:0 0 8px;font-size:16px;}
 .cloud-card p{font-size:13px;color:var(--text-muted);max-width:380px;margin:0 auto 18px;}
 
@@ -252,6 +253,7 @@ button{font-family:inherit;}
     <div class="brand">
       <span class="chest-icon" id="iconChest"></span>
       <span>Chest<span class="brand-sub">&nbsp; open anything</span></span>
+      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.1</span>
     </div>
     <div class="topbar-actions">
       <div class="status-pill" id="statusPill" title="Firebase connection status">
@@ -520,6 +522,11 @@ let groupBy = 'none';
 const CLOUD_SIZE_CAP = 5 * 1024 * 1024;      // under this: base64 straight into RTDB
 const CATBOX_SIZE_CAP = 100 * 1024 * 1024;   // 5MB–100MB: Catbox.moe, url stored in RTDB (Cloudflare Worker caps body size at ~100MB)
 const CATBOX_UPLOAD_URL = 'https://chest-catbox-proxy.masterteddy1112.workers.dev/';
+// Catbox's file CDN doesn't send CORS headers, so any fetch() (previews,
+// forced downloads) has to go through the same Worker used for uploads.
+function catboxProxyUrl(fileUrl){
+  return CATBOX_UPLOAD_URL + (CATBOX_UPLOAD_URL.endsWith('/') ? '' : '/') + '?url=' + encodeURIComponent(fileUrl);
+}
 let db = null; // set once Firebase initializes successfully, see bottom of file
 let firebaseConfiguredFlag = false; // set at bottom of file
 
@@ -612,17 +619,19 @@ function addFiles(fileListObj){
     row.innerHTML = `
       <div class="upload-progress-name">${escapeHtml(f.name)}</div>
       <div class="upload-progress-bar-track"><div class="upload-progress-bar-fill" style="width:0%"></div></div>
-      <div class="upload-progress-pct">0%</div>`;
+      <div class="upload-progress-pct"><span class="upload-progress-detail">&nbsp;</span><span class="upload-progress-pctnum">0%</span></div>`;
     wrap.appendChild(row);
 
     const fill = row.querySelector('.upload-progress-bar-fill');
-    const pctEl = row.querySelector('.upload-progress-pct');
+    const detailEl = row.querySelector('.upload-progress-detail');
+    const pctNumEl = row.querySelector('.upload-progress-pctnum');
 
     // Files over the hard cap are rejected outright — no upload attempt at all.
     if(f.size > CATBOX_SIZE_CAP){
       row.classList.add('is-error');
       fill.style.width = '100%';
-      pctEl.textContent = '';
+      detailEl.textContent = '';
+      pctNumEl.textContent = '';
       const msg = document.createElement('div');
       msg.className = 'upload-progress-error-msg';
       msg.textContent = 'Max upload size is 100 MB';
@@ -634,13 +643,35 @@ function addFiles(fileListObj){
       return;
     }
 
+    // Tracks loaded/total bytes and derives a smoothed transfer speed to show
+    // alongside the percentage (e.g. "12.3 MB of 45.0 MB · 3.1 MB/s").
+    let lastLoaded = 0, lastTime = performance.now(), smoothedSpeed = 0;
+    const setProgress = (loaded, total)=>{
+      const pct = total ? Math.max(1, Math.min(100, (loaded / total) * 100)) : 0;
+      fill.style.width = pct + '%';
+      pctNumEl.textContent = Math.round(pct) + '%';
+      const now = performance.now();
+      const dt = (now - lastTime) / 1000;
+      if(dt > 0.15){
+        const instSpeed = (loaded - lastLoaded) / dt; // bytes/sec
+        smoothedSpeed = smoothedSpeed ? (smoothedSpeed*0.7 + instSpeed*0.3) : instSpeed;
+        lastLoaded = loaded;
+        lastTime = now;
+      }
+      const speedStr = smoothedSpeed > 0 ? formatBytes(smoothedSpeed) + '/s' : '…';
+      detailEl.textContent = total
+        ? `${formatBytes(loaded)} of ${formatBytes(total)} · ${speedStr}`
+        : '';
+    };
+    // Legacy percent-only callers (kept for anything that doesn't have byte counts).
     const setPct = pct=>{
       fill.style.width = pct + '%';
-      pctEl.textContent = Math.round(pct) + '%';
+      pctNumEl.textContent = Math.round(pct) + '%';
     };
 
     const finishRow = (note, isError)=>{
       setPct(100);
+      detailEl.textContent = '';
       if(note){
         const n = document.createElement('div');
         n.className = isError ? 'upload-progress-error-msg' : '';
@@ -667,7 +698,7 @@ function addFiles(fileListObj){
 
     if(f.size >= CLOUD_SIZE_CAP){
       // 5MB–100MB tier: Catbox.moe direct upload, URL saved to Firebase.
-      uploadToCatbox(f, setPct).then(url=>{
+      uploadToCatbox(f, setProgress).then(url=>{
         const ref = filesRef();
         if(ref){
           ref.push({
@@ -696,7 +727,7 @@ function addFiles(fileListObj){
     // Under 5MB: read bytes, base64-encode, push straight into Firebase RTDB.
     const reader = new FileReader();
     reader.onprogress = e=>{
-      if(e.lengthComputable) setPct(Math.max(1, Math.round((e.loaded / e.total) * 90)));
+      if(e.lengthComputable) setProgress(e.loaded, e.total);
     };
     reader.onerror = ()=>{
       addToList({id:'f'+(idCounter++), file:f, info, addedAt, fbKey:null, storage:'local'});
@@ -739,7 +770,7 @@ function uploadToCatbox(file, onProgress){
     form.append('fileToUpload', file);
     xhr.open('POST', CATBOX_UPLOAD_URL, true);
     xhr.upload.onprogress = e=>{
-      if(e.lengthComputable) onProgress(Math.max(1, Math.round((e.loaded / e.total) * 100)));
+      if(e.lengthComputable) onProgress(e.loaded, e.total);
     };
     xhr.onload = ()=>{
       const text = (xhr.responseText || '').trim();
@@ -958,16 +989,20 @@ function downloadFile(file){
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
 }
 
-// Catbox-backed files have no local bytes — fetch the bytes from Catbox's CDN
-// and trigger a real forced download (rather than just opening/navigating to it).
+// Catbox-backed files have no local bytes — fetch them (via the Worker proxy,
+// since Catbox's CDN doesn't send CORS headers for plain fetch()) and trigger
+// a real forced download rather than just opening/navigating to it.
 function downloadCatboxFile(entry){
-  fetch(entry.url)
+  const already = entry._blobFile ? Promise.resolve(entry._blobFile) : fetch(catboxProxyUrl(entry.url))
     .then(res=>{
       if(!res.ok) throw new Error('status ' + res.status);
       return res.blob();
     })
-    .then(blob=>{
-      const url = URL.createObjectURL(blob);
+    .then(blob=>new File([blob], entry.file.name, {type: entry.file.type || blob.type || ''}));
+
+  already
+    .then(fileLike=>{
+      const url = URL.createObjectURL(fileLike);
       const a = document.createElement('a');
       a.href = url; a.download = entry.file.name;
       document.body.appendChild(a); a.click(); a.remove();
@@ -1022,7 +1057,7 @@ async function readPreview(file){
 // previewed exactly like a local file (text/code/zip viewers all need real bytes).
 async function fetchCloudBytes(entry){
   if(entry._blobFile) return entry._blobFile;
-  const res = await fetch(entry.url);
+  const res = await fetch(catboxProxyUrl(entry.url));
   if(!res.ok) throw new Error('status ' + res.status);
   const blob = await res.blob();
   const realFile = new File([blob], entry.file.name, {type: entry.file.type || blob.type || '', lastModified: entry.file.lastModified || Date.now()});
@@ -1048,8 +1083,8 @@ async function selectFile(id){
     viewer.innerHTML = headerHtml(meta.name, formatBytes(meta.size), info, cloudTag.concat(info.label?[info.label]:[])) +
       `<div class="panel"><div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind]}${info.kind==='image'?'Image preview':'Video preview'}</span></div>
       <div class="media-frame">${info.kind==='image'
-        ? `<img src="${url}" alt="${escapeHtml(meta.name)}"${isCloud?' crossorigin="anonymous"':''}>`
-        : `<video src="${url}" controls${isCloud?' crossorigin="anonymous"':''}></video>`}</div></div>`;
+        ? `<img src="${url}" alt="${escapeHtml(meta.name)}">`
+        : `<video src="${url}" controls></video>`}</div></div>`;
     document.getElementById('dlBtn').addEventListener('click', ()=> isCloud ? downloadCatboxFile(entry) : downloadFile(meta));
     return;
   }
