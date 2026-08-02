@@ -228,8 +228,8 @@ button{font-family:inherit;}
 .media-frame video{max-width:100%;max-height:58vh;border-radius:var(--r-md);box-shadow:var(--shadow-soft);background:#000;}
 
 /* Zoomable image viewer */
-.img-zoom-wrap{position:relative;width:100%;max-height:58vh;overflow:hidden;border-radius:var(--r-md);box-shadow:var(--shadow-soft);background:repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%) 50% / 24px 24px;display:flex;align-items:center;justify-content:center;touch-action:none;}
-.img-zoom-wrap img{max-width:100%;max-height:58vh;user-select:none;-webkit-user-drag:none;cursor:grab;will-change:transform;}
+.img-zoom-wrap{position:relative;width:100%;max-height:58vh;overflow:hidden;border-radius:var(--r-md);box-shadow:var(--shadow-soft);background:repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%) 50% / 24px 24px;display:flex;align-items:center;justify-content:center;touch-action:none;min-height:300px;}
+.img-zoom-wrap img{user-select:none;-webkit-user-drag:none;cursor:grab;will-change:transform;}
 .img-zoom-wrap.img-zoom-panning img{cursor:grabbing;}
 .img-zoom-controls{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;background:rgba(20,22,28,.72);backdrop-filter:blur(6px);border-radius:99px;padding:4px;box-shadow:0 4px 16px rgba(0,0,0,.3);}
 .img-zoom-controls button{background:none;border:none;color:#fff;cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:99px;}
@@ -240,22 +240,40 @@ button{font-family:inherit;}
 /* Custom video player (replaces native controls for a consistent, modern look) */
 .video-player{position:relative;width:100%;max-width:100%;background:#000;border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-soft);}
 .video-player video{width:100%;max-height:58vh;display:block;background:#000;cursor:pointer;}
-.vp-controls{position:absolute;left:0;right:0;bottom:0;padding:8px 14px 10px;background:linear-gradient(to top, rgba(0,0,0,.82), rgba(0,0,0,.35) 60%, rgba(0,0,0,0));display:flex;flex-direction:column;gap:4px;opacity:1;transition:opacity .25s ease;}
+.vp-controls{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 12px;background:linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.4) 65%, rgba(0,0,0,0));display:flex;flex-direction:column;gap:8px;opacity:1;transition:opacity .25s ease;}
 .vp-controls.vp-hidden{opacity:0;pointer-events:none;}
-.vp-row{display:flex;align-items:center;gap:8px;}
-.vp-btn{background:none;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:5px;border-radius:7px;flex-shrink:0;}
-.vp-btn:hover{background:rgba(255,255,255,.15);}
-.vp-btn svg{width:17px;height:17px;}
-.vp-time{font-size:11.5px;color:#e7e9ee;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.vp-spacer{flex:1;}
-.vp-seek{position:relative;height:14px;display:flex;align-items:center;cursor:pointer;}
+.vp-seek-row{display:flex;align-items:center;gap:10px;}
+.vp-time{font-size:11.5px;color:#e7e9ee;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:36px;}
+.vp-time-end{text-align:right;}
+.vp-seek{position:relative;flex:1;height:14px;display:flex;align-items:center;cursor:pointer;}
 .vp-seek-track{position:absolute;left:0;right:0;height:4px;border-radius:2px;background:rgba(255,255,255,.25);}
 .vp-seek-buffered{position:absolute;height:4px;border-radius:2px;background:rgba(255,255,255,.4);}
 .vp-seek-fill{position:absolute;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));}
-.vp-seek-thumb{position:absolute;width:11px;height:11px;border-radius:50%;background:#fff;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.15);}
+.vp-seek-thumb{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.15);}
+.vp-btn-row{display:flex;align-items:center;gap:10px;}
+.vp-btn{background:none;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:6px;border-radius:8px;flex-shrink:0;}
+.vp-btn:hover{background:rgba(255,255,255,.15);}
+.vp-btn svg{width:17px;height:17px;}
+.vp-play-btn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.14);}
+.vp-play-btn:hover{background:rgba(255,255,255,.24);}
+.vp-play-btn svg{width:19px;height:19px;}
+.vp-btn-spacer{flex:1;}
 .vp-vol{width:64px;height:14px;position:relative;display:flex;align-items:center;cursor:pointer;flex-shrink:0;}
 .vp-vol-track{position:absolute;left:0;right:0;height:4px;border-radius:2px;background:rgba(255,255,255,.25);}
 .vp-vol-fill{position:absolute;height:4px;border-radius:2px;background:#fff;}
+/* Fullscreen: let the player fill the real screen and scale the UI up to match */
+.video-player:fullscreen{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;border-radius:0;background:#000;}
+.video-player:-webkit-full-screen{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;border-radius:0;background:#000;}
+.video-player:fullscreen video,.video-player:-webkit-full-screen video{width:100%;height:100%;object-fit:contain;max-width:none;max-height:none;}
+.video-player:fullscreen .vp-controls,.video-player:-webkit-full-screen .vp-controls{padding:18px 36px 30px;gap:14px;}
+.video-player:fullscreen .vp-time,.video-player:-webkit-full-screen .vp-time{font-size:16px;min-width:56px;}
+.video-player:fullscreen .vp-btn svg,.video-player:-webkit-full-screen .vp-btn svg{width:26px;height:26px;}
+.video-player:fullscreen .vp-play-btn,.video-player:-webkit-full-screen .vp-play-btn{width:62px;height:62px;}
+.video-player:fullscreen .vp-play-btn svg,.video-player:-webkit-full-screen .vp-play-btn svg{width:30px;height:30px;}
+.video-player:fullscreen .vp-vol,.video-player:-webkit-full-screen .vp-vol{width:120px;}
+.video-player:fullscreen .vp-seek,.video-player:-webkit-full-screen .vp-seek{height:20px;}
+.video-player:fullscreen .vp-seek-track,.video-player:fullscreen .vp-seek-buffered,.video-player:fullscreen .vp-seek-fill{height:6px;}
+.video-player:fullscreen .vp-seek-thumb,.video-player:-webkit-full-screen .vp-seek-thumb{width:16px;height:16px;}
 
 /* modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,13,20,0.55);display:none;align-items:center;justify-content:center;z-index:50;}
@@ -285,7 +303,7 @@ button{font-family:inherit;}
     <div class="brand">
       <span class="chest-icon" id="iconChest"></span>
       <span>Chest<span class="brand-sub">&nbsp; open anything</span></span>
-      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.6</span>
+      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.9</span>
     </div>
     <div class="topbar-actions">
       <div class="status-pill" id="statusPill" title="Firebase connection status">
@@ -426,6 +444,7 @@ const ICONS = {
   volumeHigh:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/></svg>`,
   volumeMute:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6m0-6-5 6"/></svg>`,
   maximize:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>`,
+  minimize:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v3a2 2 0 0 1-2 2H4M20 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`,
   zoomIn:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>`,
   zoomOut:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>`,
   zoomReset:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
@@ -1096,38 +1115,43 @@ function mountVideoPlayer(container, src){
     <div class="video-player" id="vpRoot">
       <video id="vpVideo" src="${src}" playsinline></video>
       <div class="vp-controls" id="vpControls">
-        <div class="vp-row"><div class="vp-seek" id="vpSeek">
-          <div class="vp-seek-track"></div>
-          <div class="vp-seek-buffered" id="vpBuffered" style="width:0%"></div>
-          <div class="vp-seek-fill" id="vpFill" style="width:0%"></div>
-          <div class="vp-seek-thumb" id="vpThumb" style="left:0%"></div>
-        </div></div>
-        <div class="vp-row">
-          <button class="vp-btn" id="vpPlay" aria-label="Play">${ICONS.play}</button>
-          <span class="vp-time" id="vpTime">0:00 / 0:00</span>
-          <span class="vp-spacer"></span>
+        <div class="vp-seek-row">
+          <span class="vp-time" id="vpTimeCur">0:00</span>
+          <div class="vp-seek" id="vpSeek">
+            <div class="vp-seek-track"></div>
+            <div class="vp-seek-buffered" id="vpBuffered" style="width:0%"></div>
+            <div class="vp-seek-fill" id="vpFill" style="width:0%"></div>
+            <div class="vp-seek-thumb" id="vpThumb" style="left:0%"></div>
+          </div>
+          <span class="vp-time vp-time-end" id="vpTimeDur">0:00</span>
+        </div>
+        <div class="vp-btn-row">
           <button class="vp-btn" id="vpMute" aria-label="Mute">${ICONS.volumeHigh}</button>
           <div class="vp-vol" id="vpVol"><div class="vp-vol-track"></div><div class="vp-vol-fill" id="vpVolFill" style="width:100%"></div></div>
+          <span class="vp-btn-spacer"></span>
+          <button class="vp-btn vp-play-btn" id="vpPlay" aria-label="Play">${ICONS.play}</button>
+          <span class="vp-btn-spacer"></span>
           <button class="vp-btn" id="vpFull" aria-label="Fullscreen">${ICONS.maximize}</button>
         </div>
       </div>
     </div>`;
   const root = container.querySelector('#vpRoot'), video = container.querySelector('#vpVideo'),
     controls = container.querySelector('#vpControls'), playBtn = container.querySelector('#vpPlay'),
-    timeEl = container.querySelector('#vpTime'), seek = container.querySelector('#vpSeek'),
-    fill = container.querySelector('#vpFill'), bufferedBar = container.querySelector('#vpBuffered'),
-    thumb = container.querySelector('#vpThumb'), muteBtn = container.querySelector('#vpMute'),
-    volBar = container.querySelector('#vpVol'), volFill = container.querySelector('#vpVolFill'),
-    fullBtn = container.querySelector('#vpFull');
+    timeCurEl = container.querySelector('#vpTimeCur'), timeDurEl = container.querySelector('#vpTimeDur'),
+    seek = container.querySelector('#vpSeek'), fill = container.querySelector('#vpFill'),
+    bufferedBar = container.querySelector('#vpBuffered'), thumb = container.querySelector('#vpThumb'),
+    muteBtn = container.querySelector('#vpMute'), volBar = container.querySelector('#vpVol'),
+    volFill = container.querySelector('#vpVolFill'), fullBtn = container.querySelector('#vpFull');
 
   const fmt = s => { if(!isFinite(s)) return '0:00'; const m = Math.floor(s/60), sec = Math.floor(s%60); return m+':'+String(sec).padStart(2,'0'); };
   const setPlayIcon = () => { playBtn.innerHTML = video.paused ? ICONS.play : ICONS.pause; };
 
-  video.addEventListener('loadedmetadata', ()=>{ timeEl.textContent = fmt(0)+' / '+fmt(video.duration); });
+  video.addEventListener('loadedmetadata', ()=>{ timeDurEl.textContent = fmt(video.duration); });
   video.addEventListener('timeupdate', ()=>{
     const pct = video.duration ? (video.currentTime/video.duration)*100 : 0;
     fill.style.width = pct+'%'; thumb.style.left = pct+'%';
-    timeEl.textContent = fmt(video.currentTime)+' / '+fmt(video.duration);
+    timeCurEl.textContent = fmt(video.currentTime);
+    timeDurEl.textContent = fmt(video.duration);
   });
   video.addEventListener('progress', ()=>{
     if(video.buffered.length && video.duration){
@@ -1166,10 +1190,19 @@ function mountVideoPlayer(container, src){
   window.addEventListener('mousemove', e=>{ if(volDragging) setVol(e); });
   window.addEventListener('mouseup', ()=>{ volDragging = false; });
 
+  const isFs = ()=> !!(document.fullscreenElement || document.webkitFullscreenElement);
   fullBtn.addEventListener('click', ()=>{
-    if(document.fullscreenElement) document.exitFullscreen();
-    else if(root.requestFullscreen) root.requestFullscreen();
+    if(isFs()){
+      (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen());
+    } else if(root.requestFullscreen){
+      root.requestFullscreen();
+    } else if(root.webkitRequestFullscreen){
+      root.webkitRequestFullscreen();
+    }
   });
+  const syncFsIcon = ()=>{ fullBtn.innerHTML = isFs() ? ICONS.minimize : ICONS.maximize; };
+  document.addEventListener('fullscreenchange', syncFsIcon);
+  document.addEventListener('webkitfullscreenchange', syncFsIcon);
 
   // Controls fade out shortly after the mouse stops moving while playing;
   // always visible while paused or right after interacting.
@@ -1187,7 +1220,8 @@ function mountVideoPlayer(container, src){
 
 // Builds a zoomable/pannable image viewer inside `container` — scroll wheel
 // or +/- buttons to zoom (centered on the cursor when scrolling), drag to
-// pan once zoomed in, double-click or the reset button to snap back to fit.
+// pan once zoomed in, double-click or the reset button to snap back to a
+// view that fits the frame (scaling small images up and large ones down).
 function mountZoomableImage(container, src, alt){
   container.innerHTML = `
     <div class="img-zoom-wrap" id="izWrap">
@@ -1196,15 +1230,15 @@ function mountZoomableImage(container, src, alt){
         <button id="izOut" aria-label="Zoom out">${ICONS.zoomOut}</button>
         <span class="img-zoom-pct" id="izPct">100%</span>
         <button id="izIn" aria-label="Zoom in">${ICONS.zoomIn}</button>
-        <button id="izReset" aria-label="Reset zoom">${ICONS.zoomReset}</button>
+        <button id="izReset" aria-label="Fit to screen">${ICONS.zoomReset}</button>
       </div>
     </div>`;
   const wrap = container.querySelector('#izWrap'), img = container.querySelector('#izImg'),
     pctEl = container.querySelector('#izPct'),
     inBtn = container.querySelector('#izIn'), outBtn = container.querySelector('#izOut'), resetBtn = container.querySelector('#izReset');
 
-  let scale = 1, tx = 0, ty = 0;
-  const MIN = 1, MAX = 8;
+  let scale = 1, tx = 0, ty = 0, fitScale = 1, minScale = 0.1, maxScale = 8, dragging = false, lastX = 0, lastY = 0;
+
   const apply = ()=>{
     img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
     pctEl.textContent = Math.round(scale*100) + '%';
@@ -1212,15 +1246,16 @@ function mountZoomableImage(container, src, alt){
   };
   const clampPan = ()=>{
     // Keep some slack so the image can't be dragged fully off-screen.
-    const maxX = (wrap.clientWidth * (scale-1)) / 2 + wrap.clientWidth*0.4;
-    const maxY = (wrap.clientHeight * (scale-1)) / 2 + wrap.clientHeight*0.4;
+    const dispW = img.naturalWidth * scale, dispH = img.naturalHeight * scale;
+    const maxX = Math.max(0, (dispW - wrap.clientWidth)/2) + wrap.clientWidth*0.35;
+    const maxY = Math.max(0, (dispH - wrap.clientHeight)/2) + wrap.clientHeight*0.35;
     tx = Math.max(-maxX, Math.min(maxX, tx));
     ty = Math.max(-maxY, Math.min(maxY, ty));
   };
   const zoomAt = (factor, clientX, clientY)=>{
     const rect = wrap.getBoundingClientRect();
     const prevScale = scale;
-    scale = Math.max(MIN, Math.min(MAX, scale * factor));
+    scale = Math.max(minScale, Math.min(maxScale, scale * factor));
     if(clientX != null){
       // Zoom in/out centered on the cursor position rather than the image center.
       const cx = clientX - rect.left - rect.width/2;
@@ -1228,26 +1263,24 @@ function mountZoomableImage(container, src, alt){
       tx = cx - (cx - tx) * (scale/prevScale);
       ty = cy - (cy - ty) * (scale/prevScale);
     }
-    if(scale === MIN){ tx = 0; ty = 0; }
     clampPan();
     apply();
   };
+  const resetToFit = ()=>{ scale = fitScale; tx = 0; ty = 0; apply(); };
 
-  inBtn.addEventListener('click', ()=>zoomAt(1.5));
-  outBtn.addEventListener('click', ()=>zoomAt(1/1.5));
-  resetBtn.addEventListener('click', ()=>{ scale = 1; tx = 0; ty = 0; apply(); });
+  inBtn.addEventListener('click', ()=>zoomAt(1.4));
+  outBtn.addEventListener('click', ()=>zoomAt(1/1.4));
+  resetBtn.addEventListener('click', resetToFit);
   wrap.addEventListener('wheel', e=>{
     e.preventDefault();
     zoomAt(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX, e.clientY);
   }, {passive:false});
   wrap.addEventListener('dblclick', e=>{
-    if(scale > 1){ scale = 1; tx = 0; ty = 0; apply(); }
+    if(Math.abs(scale - fitScale) > 0.02) resetToFit();
     else zoomAt(2.5, e.clientX, e.clientY);
   });
 
-  let dragging = false, lastX = 0, lastY = 0;
   wrap.addEventListener('mousedown', e=>{
-    if(scale <= 1) return;
     dragging = true; lastX = e.clientX; lastY = e.clientY;
     apply();
   });
@@ -1259,21 +1292,20 @@ function mountZoomableImage(container, src, alt){
   });
   window.addEventListener('mouseup', ()=>{ if(dragging){ dragging = false; apply(); } });
 
-  // Basic touch support: one-finger drag to pan (when zoomed), pinch to zoom.
+  // Basic touch support: one-finger drag to pan, pinch to zoom.
   let pinchStartDist = null, pinchStartScale = 1;
   wrap.addEventListener('touchstart', e=>{
     if(e.touches.length === 2){
       pinchStartDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
       pinchStartScale = scale;
-    } else if(e.touches.length === 1 && scale > 1){
+    } else if(e.touches.length === 1){
       dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
     }
   }, {passive:true});
   wrap.addEventListener('touchmove', e=>{
     if(e.touches.length === 2 && pinchStartDist){
       const dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
-      scale = Math.max(MIN, Math.min(MAX, pinchStartScale * (dist/pinchStartDist)));
-      if(scale === MIN){ tx=0; ty=0; }
+      scale = Math.max(minScale, Math.min(maxScale, pinchStartScale * (dist/pinchStartDist)));
       clampPan(); apply();
     } else if(e.touches.length === 1 && dragging){
       tx += e.touches[0].clientX - lastX; ty += e.touches[0].clientY - lastY;
@@ -1283,7 +1315,21 @@ function mountZoomableImage(container, src, alt){
   }, {passive:true});
   wrap.addEventListener('touchend', ()=>{ dragging = false; pinchStartDist = null; });
 
-  apply();
+  // Wait for the image's real pixel dimensions before computing how it
+  // should fit the frame — a tiny icon should be scaled UP to fill the
+  // available space by default, not shown at its raw (often tiny) pixel size.
+  const initFit = ()=>{
+    const nw = img.naturalWidth || 1, nh = img.naturalHeight || 1;
+    img.style.width = nw + 'px';
+    img.style.height = nh + 'px';
+    const availW = wrap.clientWidth * 0.94, availH = wrap.clientHeight * 0.94;
+    fitScale = Math.min(availW / nw, availH / nh);
+    minScale = Math.min(fitScale * 0.2, 0.2);
+    maxScale = Math.max(8, fitScale * 6);
+    resetToFit();
+  };
+  if(img.complete && img.naturalWidth) initFit();
+  else img.addEventListener('load', initFit, {once:true});
 }
 
 async function readPreview(file){
