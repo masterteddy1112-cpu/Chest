@@ -227,6 +227,36 @@ button{font-family:inherit;}
 .media-frame img{max-width:100%;max-height:58vh;border-radius:var(--r-md);box-shadow:var(--shadow-soft);}
 .media-frame video{max-width:100%;max-height:58vh;border-radius:var(--r-md);box-shadow:var(--shadow-soft);background:#000;}
 
+/* Zoomable image viewer */
+.img-zoom-wrap{position:relative;width:100%;max-height:58vh;overflow:hidden;border-radius:var(--r-md);box-shadow:var(--shadow-soft);background:repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%) 50% / 24px 24px;display:flex;align-items:center;justify-content:center;touch-action:none;}
+.img-zoom-wrap img{max-width:100%;max-height:58vh;user-select:none;-webkit-user-drag:none;cursor:grab;will-change:transform;}
+.img-zoom-wrap.img-zoom-panning img{cursor:grabbing;}
+.img-zoom-controls{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;background:rgba(20,22,28,.72);backdrop-filter:blur(6px);border-radius:99px;padding:4px;box-shadow:0 4px 16px rgba(0,0,0,.3);}
+.img-zoom-controls button{background:none;border:none;color:#fff;cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:99px;}
+.img-zoom-controls button:hover{background:rgba(255,255,255,.15);}
+.img-zoom-controls button svg{width:15px;height:15px;}
+.img-zoom-pct{color:#e7e9ee;font-size:11px;font-variant-numeric:tabular-nums;min-width:38px;text-align:center;user-select:none;}
+
+/* Custom video player (replaces native controls for a consistent, modern look) */
+.video-player{position:relative;width:100%;max-width:100%;background:#000;border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-soft);}
+.video-player video{width:100%;max-height:58vh;display:block;background:#000;cursor:pointer;}
+.vp-controls{position:absolute;left:0;right:0;bottom:0;padding:8px 14px 10px;background:linear-gradient(to top, rgba(0,0,0,.82), rgba(0,0,0,.35) 60%, rgba(0,0,0,0));display:flex;flex-direction:column;gap:4px;opacity:1;transition:opacity .25s ease;}
+.vp-controls.vp-hidden{opacity:0;pointer-events:none;}
+.vp-row{display:flex;align-items:center;gap:8px;}
+.vp-btn{background:none;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:5px;border-radius:7px;flex-shrink:0;}
+.vp-btn:hover{background:rgba(255,255,255,.15);}
+.vp-btn svg{width:17px;height:17px;}
+.vp-time{font-size:11.5px;color:#e7e9ee;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.vp-spacer{flex:1;}
+.vp-seek{position:relative;height:14px;display:flex;align-items:center;cursor:pointer;}
+.vp-seek-track{position:absolute;left:0;right:0;height:4px;border-radius:2px;background:rgba(255,255,255,.25);}
+.vp-seek-buffered{position:absolute;height:4px;border-radius:2px;background:rgba(255,255,255,.4);}
+.vp-seek-fill{position:absolute;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));}
+.vp-seek-thumb{position:absolute;width:11px;height:11px;border-radius:50%;background:#fff;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.15);}
+.vp-vol{width:64px;height:14px;position:relative;display:flex;align-items:center;cursor:pointer;flex-shrink:0;}
+.vp-vol-track{position:absolute;left:0;right:0;height:4px;border-radius:2px;background:rgba(255,255,255,.25);}
+.vp-vol-fill{position:absolute;height:4px;border-radius:2px;background:#fff;}
+
 /* modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,13,20,0.55);display:none;align-items:center;justify-content:center;z-index:50;}
 .modal-overlay.show{display:flex;}
@@ -255,7 +285,7 @@ button{font-family:inherit;}
     <div class="brand">
       <span class="chest-icon" id="iconChest"></span>
       <span>Chest<span class="brand-sub">&nbsp; open anything</span></span>
-      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.3</span>
+      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.6</span>
     </div>
     <div class="topbar-actions">
       <div class="status-pill" id="statusPill" title="Firebase connection status">
@@ -392,6 +422,13 @@ const ICONS = {
   cloudDownload:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 17H8a5 5 0 1 1 1.3-9.8A6 6 0 0 1 21 10.5a3.5 3.5 0 0 1-.5 6.5Z"/><path d="M12 11v7m0 0-3-3m3 3 3-3"/></svg>`,
   sync:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-15-6.7L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15 6.7L21 16"/><path d="M21 21v-5h-5"/></svg>`,
   play:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5v15l13-7.5Z"/></svg>`,
+  pause:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
+  volumeHigh:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/></svg>`,
+  volumeMute:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6m0-6-5 6"/></svg>`,
+  maximize:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>`,
+  zoomIn:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>`,
+  zoomOut:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>`,
+  zoomReset:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
 };
 function setIcon(id,name){const el=document.getElementById(id);if(el)el.innerHTML=ICONS[name];}
 setIcon('iconChest','chest');
@@ -1051,6 +1088,204 @@ function lineWrap(htmlOrText){
   ).join('');
 }
 
+// Builds a modern custom-controlled video player (play/pause, seek with
+// buffered range, volume, fullscreen, auto-hiding controls) inside `container`,
+// replacing the native browser <video controls> UI for a consistent look.
+function mountVideoPlayer(container, src){
+  container.innerHTML = `
+    <div class="video-player" id="vpRoot">
+      <video id="vpVideo" src="${src}" playsinline></video>
+      <div class="vp-controls" id="vpControls">
+        <div class="vp-row"><div class="vp-seek" id="vpSeek">
+          <div class="vp-seek-track"></div>
+          <div class="vp-seek-buffered" id="vpBuffered" style="width:0%"></div>
+          <div class="vp-seek-fill" id="vpFill" style="width:0%"></div>
+          <div class="vp-seek-thumb" id="vpThumb" style="left:0%"></div>
+        </div></div>
+        <div class="vp-row">
+          <button class="vp-btn" id="vpPlay" aria-label="Play">${ICONS.play}</button>
+          <span class="vp-time" id="vpTime">0:00 / 0:00</span>
+          <span class="vp-spacer"></span>
+          <button class="vp-btn" id="vpMute" aria-label="Mute">${ICONS.volumeHigh}</button>
+          <div class="vp-vol" id="vpVol"><div class="vp-vol-track"></div><div class="vp-vol-fill" id="vpVolFill" style="width:100%"></div></div>
+          <button class="vp-btn" id="vpFull" aria-label="Fullscreen">${ICONS.maximize}</button>
+        </div>
+      </div>
+    </div>`;
+  const root = container.querySelector('#vpRoot'), video = container.querySelector('#vpVideo'),
+    controls = container.querySelector('#vpControls'), playBtn = container.querySelector('#vpPlay'),
+    timeEl = container.querySelector('#vpTime'), seek = container.querySelector('#vpSeek'),
+    fill = container.querySelector('#vpFill'), bufferedBar = container.querySelector('#vpBuffered'),
+    thumb = container.querySelector('#vpThumb'), muteBtn = container.querySelector('#vpMute'),
+    volBar = container.querySelector('#vpVol'), volFill = container.querySelector('#vpVolFill'),
+    fullBtn = container.querySelector('#vpFull');
+
+  const fmt = s => { if(!isFinite(s)) return '0:00'; const m = Math.floor(s/60), sec = Math.floor(s%60); return m+':'+String(sec).padStart(2,'0'); };
+  const setPlayIcon = () => { playBtn.innerHTML = video.paused ? ICONS.play : ICONS.pause; };
+
+  video.addEventListener('loadedmetadata', ()=>{ timeEl.textContent = fmt(0)+' / '+fmt(video.duration); });
+  video.addEventListener('timeupdate', ()=>{
+    const pct = video.duration ? (video.currentTime/video.duration)*100 : 0;
+    fill.style.width = pct+'%'; thumb.style.left = pct+'%';
+    timeEl.textContent = fmt(video.currentTime)+' / '+fmt(video.duration);
+  });
+  video.addEventListener('progress', ()=>{
+    if(video.buffered.length && video.duration){
+      bufferedBar.style.width = (video.buffered.end(video.buffered.length-1)/video.duration*100)+'%';
+    }
+  });
+  video.addEventListener('play', setPlayIcon);
+  video.addEventListener('pause', setPlayIcon);
+  video.addEventListener('click', ()=> video.paused ? video.play() : video.pause());
+  playBtn.addEventListener('click', ()=> video.paused ? video.play() : video.pause());
+
+  const seekTo = e=>{
+    const rect = seek.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+    if(video.duration) video.currentTime = pct*video.duration;
+  };
+  let seeking = false;
+  seek.addEventListener('mousedown', e=>{ seeking = true; seekTo(e); });
+  window.addEventListener('mousemove', e=>{ if(seeking) seekTo(e); });
+  window.addEventListener('mouseup', ()=>{ seeking = false; });
+
+  muteBtn.addEventListener('click', ()=>{
+    video.muted = !video.muted;
+    muteBtn.innerHTML = (video.muted || video.volume===0) ? ICONS.volumeMute : ICONS.volumeHigh;
+    volFill.style.width = video.muted ? '0%' : (video.volume*100)+'%';
+  });
+  const setVol = e=>{
+    const rect = volBar.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+    video.volume = pct; video.muted = pct===0;
+    volFill.style.width = (pct*100)+'%';
+    muteBtn.innerHTML = pct===0 ? ICONS.volumeMute : ICONS.volumeHigh;
+  };
+  let volDragging = false;
+  volBar.addEventListener('mousedown', e=>{ volDragging = true; setVol(e); });
+  window.addEventListener('mousemove', e=>{ if(volDragging) setVol(e); });
+  window.addEventListener('mouseup', ()=>{ volDragging = false; });
+
+  fullBtn.addEventListener('click', ()=>{
+    if(document.fullscreenElement) document.exitFullscreen();
+    else if(root.requestFullscreen) root.requestFullscreen();
+  });
+
+  // Controls fade out shortly after the mouse stops moving while playing;
+  // always visible while paused or right after interacting.
+  let hideTimer;
+  const showControls = ()=>{
+    controls.classList.remove('vp-hidden');
+    clearTimeout(hideTimer);
+    if(!video.paused) hideTimer = setTimeout(()=>controls.classList.add('vp-hidden'), 2200);
+  };
+  root.addEventListener('mousemove', showControls);
+  video.addEventListener('play', showControls);
+  video.addEventListener('pause', showControls);
+  showControls();
+}
+
+// Builds a zoomable/pannable image viewer inside `container` — scroll wheel
+// or +/- buttons to zoom (centered on the cursor when scrolling), drag to
+// pan once zoomed in, double-click or the reset button to snap back to fit.
+function mountZoomableImage(container, src, alt){
+  container.innerHTML = `
+    <div class="img-zoom-wrap" id="izWrap">
+      <img id="izImg" src="${src}" alt="${escapeHtml(alt)}" draggable="false">
+      <div class="img-zoom-controls">
+        <button id="izOut" aria-label="Zoom out">${ICONS.zoomOut}</button>
+        <span class="img-zoom-pct" id="izPct">100%</span>
+        <button id="izIn" aria-label="Zoom in">${ICONS.zoomIn}</button>
+        <button id="izReset" aria-label="Reset zoom">${ICONS.zoomReset}</button>
+      </div>
+    </div>`;
+  const wrap = container.querySelector('#izWrap'), img = container.querySelector('#izImg'),
+    pctEl = container.querySelector('#izPct'),
+    inBtn = container.querySelector('#izIn'), outBtn = container.querySelector('#izOut'), resetBtn = container.querySelector('#izReset');
+
+  let scale = 1, tx = 0, ty = 0;
+  const MIN = 1, MAX = 8;
+  const apply = ()=>{
+    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    pctEl.textContent = Math.round(scale*100) + '%';
+    wrap.classList.toggle('img-zoom-panning', dragging);
+  };
+  const clampPan = ()=>{
+    // Keep some slack so the image can't be dragged fully off-screen.
+    const maxX = (wrap.clientWidth * (scale-1)) / 2 + wrap.clientWidth*0.4;
+    const maxY = (wrap.clientHeight * (scale-1)) / 2 + wrap.clientHeight*0.4;
+    tx = Math.max(-maxX, Math.min(maxX, tx));
+    ty = Math.max(-maxY, Math.min(maxY, ty));
+  };
+  const zoomAt = (factor, clientX, clientY)=>{
+    const rect = wrap.getBoundingClientRect();
+    const prevScale = scale;
+    scale = Math.max(MIN, Math.min(MAX, scale * factor));
+    if(clientX != null){
+      // Zoom in/out centered on the cursor position rather than the image center.
+      const cx = clientX - rect.left - rect.width/2;
+      const cy = clientY - rect.top - rect.height/2;
+      tx = cx - (cx - tx) * (scale/prevScale);
+      ty = cy - (cy - ty) * (scale/prevScale);
+    }
+    if(scale === MIN){ tx = 0; ty = 0; }
+    clampPan();
+    apply();
+  };
+
+  inBtn.addEventListener('click', ()=>zoomAt(1.5));
+  outBtn.addEventListener('click', ()=>zoomAt(1/1.5));
+  resetBtn.addEventListener('click', ()=>{ scale = 1; tx = 0; ty = 0; apply(); });
+  wrap.addEventListener('wheel', e=>{
+    e.preventDefault();
+    zoomAt(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX, e.clientY);
+  }, {passive:false});
+  wrap.addEventListener('dblclick', e=>{
+    if(scale > 1){ scale = 1; tx = 0; ty = 0; apply(); }
+    else zoomAt(2.5, e.clientX, e.clientY);
+  });
+
+  let dragging = false, lastX = 0, lastY = 0;
+  wrap.addEventListener('mousedown', e=>{
+    if(scale <= 1) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    apply();
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    tx += e.clientX - lastX; ty += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    clampPan(); apply();
+  });
+  window.addEventListener('mouseup', ()=>{ if(dragging){ dragging = false; apply(); } });
+
+  // Basic touch support: one-finger drag to pan (when zoomed), pinch to zoom.
+  let pinchStartDist = null, pinchStartScale = 1;
+  wrap.addEventListener('touchstart', e=>{
+    if(e.touches.length === 2){
+      pinchStartDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      pinchStartScale = scale;
+    } else if(e.touches.length === 1 && scale > 1){
+      dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    }
+  }, {passive:true});
+  wrap.addEventListener('touchmove', e=>{
+    if(e.touches.length === 2 && pinchStartDist){
+      const dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      scale = Math.max(MIN, Math.min(MAX, pinchStartScale * (dist/pinchStartDist)));
+      if(scale === MIN){ tx=0; ty=0; }
+      clampPan(); apply();
+    } else if(e.touches.length === 1 && dragging){
+      tx += e.touches[0].clientX - lastX; ty += e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+      clampPan(); apply();
+    }
+  }, {passive:true});
+  wrap.addEventListener('touchend', ()=>{ dragging = false; pinchStartDist = null; });
+
+  apply();
+}
+
 async function readPreview(file){
   const truncated = file.size > MAX_PREVIEW;
   const blob = truncated ? file.slice(0, MAX_PREVIEW) : file;
@@ -1087,9 +1322,9 @@ async function selectFile(id){
     const url = isCloud ? entry.url : URL.createObjectURL(meta);
     viewer.innerHTML = headerHtml(meta.name, formatBytes(meta.size), info, cloudTag.concat(info.label?[info.label]:[])) +
       `<div class="panel"><div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind]}${info.kind==='image'?'Image preview':'Video preview'}</span></div>
-      <div class="media-frame">${info.kind==='image'
-        ? `<img src="${url}" alt="${escapeHtml(meta.name)}">`
-        : `<video src="${url}" controls></video>`}</div></div>`;
+      <div class="media-frame" id="mediaFrame"></div></div>`;
+    if(info.kind === 'image') mountZoomableImage(document.getElementById('mediaFrame'), url, meta.name);
+    else mountVideoPlayer(document.getElementById('mediaFrame'), url);
     document.getElementById('dlBtn').addEventListener('click', ()=> isCloud ? downloadCatboxFile(entry) : downloadFile(meta));
     return;
   }
@@ -1154,9 +1389,10 @@ async function selectFile(id){
           <button class="btn btn-ghost" id="svgToggleBtn">${viewMode==='image'?ICONS.fileCode+' View code':ICONS.image+' View image'}</button>
           </div>
           ${viewMode==='image'
-            ? `<div class="media-frame"><img src="${svgUrl}" alt="${escapeHtml(file.name)}"></div>`
+            ? `<div id="svgMediaFrame"></div>`
             : `<div class="code-scroll">${lineWrap(highlighted)}</div>`}`;
         document.getElementById('svgToggleBtn').addEventListener('click', ()=>{ viewMode = viewMode==='image'?'code':'image'; renderPanel(); });
+        if(viewMode==='image') mountZoomableImage(document.getElementById('svgMediaFrame'), svgUrl, file.name);
       };
       renderPanel();
       return;
@@ -1190,25 +1426,48 @@ async function selectFile(id){
     } else {
       bodyHtml = lineWrap(escapeHtml(text));
     }
+
+    // A .json file might actually be a 3D model (Blockbench models are just
+    // JSON) — only offer the toggle if it actually parses and looks like one.
+    let modelData = null;
+    if(info.ext === 'json' && !truncated){
+      try{ const parsed = JSON.parse(text); if(looksLikeBbmodel(parsed)) modelData = parsed; }catch(e){ /* not JSON-parseable or not a model — plain code view only */ }
+    }
+
     const panel = viewer.querySelector('.panel');
-    let runMode = false;
+    let runMode = false; // shared by both the HTML-run toggle and the JSON-3D toggle — only one ever applies per file
     let fullText = truncated ? null : text; // only need the full (untruncated) text when actually running it
     const renderPanel = ()=>{
+      const showToggle = isRunnable || modelData;
       panel.innerHTML = `<div class="panel-bar">
         <span class="panel-bar-left">${ICONS[info.kind==='code'?'fileCode':'fileText']}${info.kind==='code'?'Code viewer · '+info.lang:'Text viewer'}</span>
         ${isRunnable ? `<button class="btn btn-ghost" id="runToggleBtn">${runMode ? ICONS.fileCode : ICONS.play}${runMode ? ' View code' : ' Run preview'}</button>` : ''}
+        ${modelData ? `<button class="btn btn-ghost" id="runToggleBtn">${runMode ? ICONS.fileCode : ICONS.grassBlock}${runMode ? ' View code' : ' Preview 3D'}</button>` : ''}
         </div>
         ${(truncated && !runMode)?`<div style="padding:14px 16px 0;"><div class="notice notice-warn">${ICONS.alert}<span>Showing the first ${formatBytes(MAX_PREVIEW)} of a ${formatBytes(file.size)} file. Download it to read the rest.</span></div></div>`:''}
         ${runMode
-          ? `<iframe id="runFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups" style="width:100%;height:62vh;border:none;background:#fff;display:block;"></iframe>`
+          ? (isRunnable
+              ? `<iframe id="runFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups" style="width:100%;height:62vh;border:none;background:#fff;display:block;"></iframe>`
+              : `<div id="bbCanvasWrap" style="width:100%;height:62vh;background:#1a1d24;position:relative;overflow:hidden;cursor:grab;"></div>`)
           : `<div class="code-scroll">${bodyHtml}</div>`}`;
-      if(isRunnable){
+      if(showToggle){
         document.getElementById('runToggleBtn').addEventListener('click', async ()=>{
           runMode = !runMode;
-          if(runMode && fullText === null) fullText = await file.text(); // fetch the full file only once, the first time it's actually run
+          if(runMode && isRunnable && fullText === null) fullText = await file.text(); // fetch the full file only once, the first time it's actually run
           renderPanel();
         });
-        if(runMode) document.getElementById('runFrame').srcdoc = fullText; // set as a property so the raw HTML never has to be escaped into an attribute
+        if(runMode && isRunnable){
+          // Blob URLs give the iframe a real (if unique) origin and a proper
+          // base for resolving any absolute external resources the page
+          // references (e.g. <script src="https://cdn..."> like the CDN
+          // libraries used in the Minecraft project) — more reliable than
+          // srcdoc, which resolves relative/base URLs less consistently.
+          const blobUrl = URL.createObjectURL(new Blob([fullText], {type:'text/html'}));
+          const frame = document.getElementById('runFrame');
+          frame.src = blobUrl;
+          frame.addEventListener('load', ()=>URL.revokeObjectURL(blobUrl), {once:true});
+        }
+        if(runMode && modelData) mountBbmodelScene(document.getElementById('bbCanvasWrap'), modelData);
       }
     };
     renderPanel();
@@ -1278,126 +1537,146 @@ async function renderBbmodel(entry){
   function mount3D(){
     if(stopLoop) stopLoop(); // tear down any previous instance before remounting
     const wrap = document.getElementById('bbCanvasWrap');
-    if(!wrap || typeof THREE === 'undefined') return;
-
-    if(!cubes.length){
-      wrap.innerHTML = `<div class="unsupported" style="padding:34px 24px;">${ICONS.ban}<h3>Nothing to show</h3><p>This model has no cuboid elements this viewer can render.</p></div>`;
-      return;
-    }
-
-    const width = wrap.clientWidth, height = wrap.clientHeight;
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1d24);
-    const camera = new THREE.PerspectiveCamera(45, width/height, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
-    wrap.innerHTML = '';
-    wrap.appendChild(renderer.domElement);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.6);
-    dir.position.set(4, 6, 5);
-    scene.add(dir);
-
-    // Blockbench textures are embedded as base64 data URIs — use the first
-    // one (if any) as a flat texture across all cubes, nearest-filtered to
-    // keep the pixel-art look. Exact per-face UV mapping isn't attempted.
-    let material;
-    const firstTex = Array.isArray(model.textures) && model.textures[0] && model.textures[0].source;
-    if(firstTex){
-      const tex = new THREE.TextureLoader().load(firstTex);
-      tex.magFilter = THREE.NearestFilter;
-      tex.minFilter = THREE.NearestFilter;
-      material = new THREE.MeshLambertMaterial({map: tex});
-    } else {
-      material = new THREE.MeshLambertMaterial({color: 0x8fa6c9});
-    }
-
-    const group = new THREE.Group();
-    const BB_UNIT = 16; // Blockbench uses 16 units per block, purely a scale convention
-    const box = new THREE.Box3();
-    cubes.forEach(el=>{
-      const from = el.from || [0,0,0], to = el.to || [1,1,1];
-      const size = [Math.max(0.001,(to[0]-from[0])/BB_UNIT), Math.max(0.001,(to[1]-from[1])/BB_UNIT), Math.max(0.001,(to[2]-from[2])/BB_UNIT)];
-      const center = [(from[0]+to[0])/2/BB_UNIT, (from[1]+to[1])/2/BB_UNIT, (from[2]+to[2])/2/BB_UNIT];
-      const geo = new THREE.BoxGeometry(size[0], size[1], size[2]);
-      const mesh = new THREE.Mesh(geo, material);
-      const pivot = new THREE.Group();
-      if(el.rotation && Array.isArray(el.rotation)){
-        const origin = el.origin || center.map(c=>c*BB_UNIT);
-        pivot.position.set(origin[0]/BB_UNIT, origin[1]/BB_UNIT, origin[2]/BB_UNIT);
-        mesh.position.set(center[0]-pivot.position.x, center[1]-pivot.position.y, center[2]-pivot.position.z);
-        pivot.rotation.set(THREE.MathUtils.degToRad(el.rotation[0]||0), THREE.MathUtils.degToRad(el.rotation[1]||0), THREE.MathUtils.degToRad(el.rotation[2]||0));
-      } else {
-        mesh.position.set(center[0], center[1], center[2]);
-      }
-      pivot.add(mesh);
-      group.add(pivot);
-    });
-
-    // Recenter the whole model around the origin so the camera framing below is consistent.
-    box.setFromObject(group);
-    const modelCenter = new THREE.Vector3();
-    box.getCenter(modelCenter);
-    group.position.sub(modelCenter);
-    scene.add(group);
-
-    const modelSize = new THREE.Vector3();
-    box.getSize(modelSize);
-    const radius = Math.max(0.6, modelSize.length()) * 1.6;
-    camera.position.set(radius*0.7, radius*0.55, radius*0.7);
-    camera.lookAt(0,0,0);
-
-    // Lightweight manual orbit: drag to rotate, wheel to zoom — avoids pulling
-    // in the separate OrbitControls addon just for this one viewer.
-    let yaw = Math.atan2(camera.position.x, camera.position.z);
-    let pitch = Math.atan2(camera.position.y, Math.hypot(camera.position.x, camera.position.z));
-    let dist = camera.position.length();
-    let dragging = false, lastX = 0, lastY = 0;
-    const updateCam = ()=>{
-      pitch = Math.max(-1.4, Math.min(1.4, pitch));
-      camera.position.set(
-        dist * Math.cos(pitch) * Math.sin(yaw),
-        dist * Math.sin(pitch),
-        dist * Math.cos(pitch) * Math.cos(yaw)
-      );
-      camera.lookAt(0,0,0);
-    };
-    updateCam();
-    const onDown = e=>{ dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.style.cursor = 'grabbing'; };
-    const onUp = ()=>{ dragging = false; wrap.style.cursor = 'grab'; };
-    const onMove = e=>{
-      if(!dragging) return;
-      yaw -= (e.clientX - lastX) * 0.008;
-      pitch += (e.clientY - lastY) * 0.008;
-      lastX = e.clientX; lastY = e.clientY;
-      updateCam();
-    };
-    const onWheel = e=>{
-      e.preventDefault();
-      dist = Math.max(radius*0.3, Math.min(radius*3, dist * (1 + e.deltaY*0.001)));
-      updateCam();
-    };
-    renderer.domElement.addEventListener('mousedown', onDown);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('mousemove', onMove);
-    renderer.domElement.addEventListener('wheel', onWheel, {passive:false});
-
-    let raf;
-    (function animate(){ raf = requestAnimationFrame(animate); renderer.render(scene, camera); })();
-
-    stopLoop = ()=>{
-      cancelAnimationFrame(raf);
-      renderer.domElement.removeEventListener('mousedown', onDown);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('mousemove', onMove);
-      renderer.domElement.removeEventListener('wheel', onWheel);
-      renderer.dispose();
-    };
+    if(!wrap) return;
+    stopLoop = mountBbmodelScene(wrap, model);
   }
 
   renderChrome();
+}
+
+// Quick heuristic: does this parsed JSON look like a Blockbench model (has at
+// least one cuboid element), rather than being arbitrary/unrelated JSON?
+function looksLikeBbmodel(obj){
+  return !!(obj && typeof obj === 'object' && Array.isArray(obj.elements) &&
+    obj.elements.some(el => el && Array.isArray(el.from) && Array.isArray(el.to)));
+}
+
+// Builds and mounts a Three.js scene for a Blockbench-shaped model JSON into
+// the given wrapper element. Returns a stop() function that tears down the
+// renderer/listeners/animation loop when the view is switched away or
+// remounted. Best-effort viewer: renders cuboid elements with rotation/pivots
+// and a single flattened texture — no exact per-face UV mapping, animations,
+// or "mesh"-type (non-cuboid) elements.
+function mountBbmodelScene(wrap, model){
+  if(typeof THREE === 'undefined') return ()=>{};
+  const elements = Array.isArray(model.elements) ? model.elements : [];
+  const cubes = elements.filter(el => !el.type || el.type === 'cube');
+
+  if(!cubes.length){
+    wrap.innerHTML = `<div class="unsupported" style="padding:34px 24px;">${ICONS.ban}<h3>Nothing to show</h3><p>This model has no cuboid elements this viewer can render.</p></div>`;
+    return ()=>{};
+  }
+
+  const width = wrap.clientWidth, height = wrap.clientHeight;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1d24);
+  const camera = new THREE.PerspectiveCamera(45, width/height, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  wrap.innerHTML = '';
+  wrap.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.6);
+  dir.position.set(4, 6, 5);
+  scene.add(dir);
+
+  // Blockbench textures are embedded as base64 data URIs — use the first
+  // one (if any) as a flat texture across all cubes, nearest-filtered to
+  // keep the pixel-art look. Exact per-face UV mapping isn't attempted.
+  let material;
+  const firstTex = Array.isArray(model.textures) && model.textures[0] && model.textures[0].source;
+  if(firstTex){
+    const tex = new THREE.TextureLoader().load(firstTex);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    material = new THREE.MeshLambertMaterial({map: tex});
+  } else {
+    material = new THREE.MeshLambertMaterial({color: 0x8fa6c9});
+  }
+
+  const group = new THREE.Group();
+  const BB_UNIT = 16; // Blockbench uses 16 units per block, purely a scale convention
+  const box = new THREE.Box3();
+  cubes.forEach(el=>{
+    const from = el.from || [0,0,0], to = el.to || [1,1,1];
+    const size = [Math.max(0.001,(to[0]-from[0])/BB_UNIT), Math.max(0.001,(to[1]-from[1])/BB_UNIT), Math.max(0.001,(to[2]-from[2])/BB_UNIT)];
+    const center = [(from[0]+to[0])/2/BB_UNIT, (from[1]+to[1])/2/BB_UNIT, (from[2]+to[2])/2/BB_UNIT];
+    const geo = new THREE.BoxGeometry(size[0], size[1], size[2]);
+    const mesh = new THREE.Mesh(geo, material);
+    const pivot = new THREE.Group();
+    if(el.rotation && Array.isArray(el.rotation)){
+      const origin = el.origin || center.map(c=>c*BB_UNIT);
+      pivot.position.set(origin[0]/BB_UNIT, origin[1]/BB_UNIT, origin[2]/BB_UNIT);
+      mesh.position.set(center[0]-pivot.position.x, center[1]-pivot.position.y, center[2]-pivot.position.z);
+      pivot.rotation.set(THREE.MathUtils.degToRad(el.rotation[0]||0), THREE.MathUtils.degToRad(el.rotation[1]||0), THREE.MathUtils.degToRad(el.rotation[2]||0));
+    } else {
+      mesh.position.set(center[0], center[1], center[2]);
+    }
+    pivot.add(mesh);
+    group.add(pivot);
+  });
+
+  // Recenter the whole model around the origin so the camera framing below is consistent.
+  box.setFromObject(group);
+  const modelCenter = new THREE.Vector3();
+  box.getCenter(modelCenter);
+  group.position.sub(modelCenter);
+  scene.add(group);
+
+  const modelSize = new THREE.Vector3();
+  box.getSize(modelSize);
+  const radius = Math.max(0.6, modelSize.length()) * 1.6;
+  camera.position.set(radius*0.7, radius*0.55, radius*0.7);
+  camera.lookAt(0,0,0);
+
+  // Lightweight manual orbit: drag to rotate, wheel to zoom — avoids pulling
+  // in the separate OrbitControls addon just for this one viewer.
+  let yaw = Math.atan2(camera.position.x, camera.position.z);
+  let pitch = Math.atan2(camera.position.y, Math.hypot(camera.position.x, camera.position.z));
+  let dist = camera.position.length();
+  let dragging = false, lastX = 0, lastY = 0;
+  const updateCam = ()=>{
+    pitch = Math.max(-1.4, Math.min(1.4, pitch));
+    camera.position.set(
+      dist * Math.cos(pitch) * Math.sin(yaw),
+      dist * Math.sin(pitch),
+      dist * Math.cos(pitch) * Math.cos(yaw)
+    );
+    camera.lookAt(0,0,0);
+  };
+  updateCam();
+  const onDown = e=>{ dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.style.cursor = 'grabbing'; };
+  const onUp = ()=>{ dragging = false; wrap.style.cursor = 'grab'; };
+  const onMove = e=>{
+    if(!dragging) return;
+    yaw -= (e.clientX - lastX) * 0.008;
+    pitch += (e.clientY - lastY) * 0.008;
+    lastX = e.clientX; lastY = e.clientY;
+    updateCam();
+  };
+  const onWheel = e=>{
+    e.preventDefault();
+    dist = Math.max(radius*0.3, Math.min(radius*3, dist * (1 + e.deltaY*0.001)));
+    updateCam();
+  };
+  renderer.domElement.addEventListener('mousedown', onDown);
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('mousemove', onMove);
+  renderer.domElement.addEventListener('wheel', onWheel, {passive:false});
+
+  let raf;
+  (function animate(){ raf = requestAnimationFrame(animate); renderer.render(scene, camera); })();
+
+  return function stop(){
+    cancelAnimationFrame(raf);
+    renderer.domElement.removeEventListener('mousedown', onDown);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('mousemove', onMove);
+    renderer.domElement.removeEventListener('wheel', onWheel);
+    renderer.dispose();
+  };
 }
 
 /* ---------------- Zip viewer ---------------- */
@@ -1524,9 +1803,9 @@ async function previewZipEntry(zip, path){
     const url = URL.createObjectURL(blob);
     previewEl.innerHTML = `
       <div class="panel-bar"><span class="panel-bar-left">${ICONS[info.kind]}${escapeHtml(name)}</span></div>
-      <div class="media-frame">${info.kind==='image'
-        ? `<img src="${url}" alt="${escapeHtml(name)}">`
-        : `<video src="${url}" controls></video>`}</div>`;
+      <div class="media-frame" id="zipMediaFrame"></div>`;
+    if(info.kind === 'image') mountZoomableImage(document.getElementById('zipMediaFrame'), url, name);
+    else mountVideoPlayer(document.getElementById('zipMediaFrame'), url);
     return;
   }
 
