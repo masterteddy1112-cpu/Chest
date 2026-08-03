@@ -238,8 +238,8 @@ button{font-family:inherit;}
 .img-zoom-pct{color:#e7e9ee;font-size:11px;font-variant-numeric:tabular-nums;min-width:38px;text-align:center;user-select:none;}
 
 /* Custom video player (replaces native controls for a consistent, modern look) */
-.video-player{position:relative;width:100%;max-width:100%;background:#000;border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-soft);}
-.video-player video{width:100%;max-height:58vh;display:block;background:#000;cursor:pointer;}
+.video-player{position:relative;width:100%;max-width:100%;background:#000;border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-soft);margin:0 auto;}
+.video-player video{width:100%;height:auto;display:block;background:#000;cursor:pointer;}
 .vp-controls{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 12px;background:linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.4) 65%, rgba(0,0,0,0));display:flex;flex-direction:column;gap:8px;opacity:1;transition:opacity .25s ease;}
 .vp-controls.vp-hidden{opacity:0;pointer-events:none;}
 .vp-seek-row{display:flex;align-items:center;gap:10px;}
@@ -250,14 +250,14 @@ button{font-family:inherit;}
 .vp-seek-buffered{position:absolute;height:4px;border-radius:2px;background:rgba(255,255,255,.4);}
 .vp-seek-fill{position:absolute;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));}
 .vp-seek-thumb{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.15);}
-.vp-btn-row{display:flex;align-items:center;gap:10px;}
+.vp-btn-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .vp-btn{background:none;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:6px;border-radius:8px;flex-shrink:0;}
 .vp-btn:hover{background:rgba(255,255,255,.15);}
 .vp-btn svg{width:17px;height:17px;}
-.vp-play-btn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.14);}
-.vp-play-btn:hover{background:rgba(255,255,255,.24);}
-.vp-play-btn svg{width:19px;height:19px;}
-.vp-btn-spacer{flex:1;}
+.vp-play-btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent-1),var(--accent-2));box-shadow:0 2px 10px rgba(0,0,0,.35);}
+.vp-play-btn:hover{filter:brightness(1.12);}
+.vp-play-btn svg{width:19px;height:19px;color:#fff;}
+.vp-vol-group{display:flex;align-items:center;gap:10px;}
 .vp-vol{width:64px;height:14px;position:relative;display:flex;align-items:center;cursor:pointer;flex-shrink:0;}
 .vp-vol-track{position:absolute;left:0;right:0;height:4px;border-radius:2px;background:rgba(255,255,255,.25);}
 .vp-vol-fill{position:absolute;height:4px;border-radius:2px;background:#fff;}
@@ -303,7 +303,7 @@ button{font-family:inherit;}
     <div class="brand">
       <span class="chest-icon" id="iconChest"></span>
       <span>Chest<span class="brand-sub">&nbsp; open anything</span></span>
-      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.0.9</span>
+      <span style="font-size:10px;font-weight:700;color:var(--text-faint);background:var(--surface-3);padding:2px 7px;border-radius:99px;margin-left:8px;">v1.0.1.1</span>
     </div>
     <div class="topbar-actions">
       <div class="status-pill" id="statusPill" title="Firebase connection status">
@@ -444,7 +444,7 @@ const ICONS = {
   volumeHigh:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/></svg>`,
   volumeMute:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="m16 9 5 6m0-6-5 6"/></svg>`,
   maximize:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>`,
-  minimize:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v3a2 2 0 0 1-2 2H4M20 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`,
+  minimize:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v3a2 2 0 0 1-2 2H4M15 3v3a2 2 0 0 0 2 2h3M15 21v-3a2 2 0 0 1 2-2h3M9 21v-3a2 2 0 0 0-2-2H4"/></svg>`,
   zoomIn:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>`,
   zoomOut:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>`,
   zoomReset:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
@@ -1126,11 +1126,11 @@ function mountVideoPlayer(container, src){
           <span class="vp-time vp-time-end" id="vpTimeDur">0:00</span>
         </div>
         <div class="vp-btn-row">
-          <button class="vp-btn" id="vpMute" aria-label="Mute">${ICONS.volumeHigh}</button>
-          <div class="vp-vol" id="vpVol"><div class="vp-vol-track"></div><div class="vp-vol-fill" id="vpVolFill" style="width:100%"></div></div>
-          <span class="vp-btn-spacer"></span>
+          <div class="vp-vol-group">
+            <button class="vp-btn" id="vpMute" aria-label="Mute">${ICONS.volumeHigh}</button>
+            <div class="vp-vol" id="vpVol"><div class="vp-vol-track"></div><div class="vp-vol-fill" id="vpVolFill" style="width:100%"></div></div>
+          </div>
           <button class="vp-btn vp-play-btn" id="vpPlay" aria-label="Play">${ICONS.play}</button>
-          <span class="vp-btn-spacer"></span>
           <button class="vp-btn" id="vpFull" aria-label="Fullscreen">${ICONS.maximize}</button>
         </div>
       </div>
@@ -1146,7 +1146,18 @@ function mountVideoPlayer(container, src){
   const fmt = s => { if(!isFinite(s)) return '0:00'; const m = Math.floor(s/60), sec = Math.floor(s%60); return m+':'+String(sec).padStart(2,'0'); };
   const setPlayIcon = () => { playBtn.innerHTML = video.paused ? ICONS.play : ICONS.pause; };
 
-  video.addEventListener('loadedmetadata', ()=>{ timeDurEl.textContent = fmt(video.duration); });
+  // In windowed (non-fullscreen) mode, cap the player's WIDTH (rather than
+  // capping the video's height directly) so a width:100%/height:auto video
+  // never exceeds a comfortable viewing height, without ever letterboxing —
+  // black bars only make sense in fullscreen, where the screen's own aspect
+  // ratio genuinely may not match the video's.
+  const fitWindowedSize = ()=>{
+    if(isFs() || !video.videoWidth || !video.videoHeight) return;
+    const ar = video.videoWidth / video.videoHeight;
+    root.style.maxWidth = Math.round(ar * (window.innerHeight * 0.58)) + 'px';
+  };
+  video.addEventListener('loadedmetadata', ()=>{ timeDurEl.textContent = fmt(video.duration); fitWindowedSize(); });
+  window.addEventListener('resize', fitWindowedSize);
   video.addEventListener('timeupdate', ()=>{
     const pct = video.duration ? (video.currentTime/video.duration)*100 : 0;
     fill.style.width = pct+'%'; thumb.style.left = pct+'%';
@@ -1200,7 +1211,14 @@ function mountVideoPlayer(container, src){
       root.webkitRequestFullscreen();
     }
   });
-  const syncFsIcon = ()=>{ fullBtn.innerHTML = isFs() ? ICONS.minimize : ICONS.maximize; };
+  const syncFsIcon = ()=>{
+    fullBtn.innerHTML = isFs() ? ICONS.minimize : ICONS.maximize;
+    // Re-sync volume/mute display and windowed sizing across the fullscreen
+    // transition — some browsers can otherwise leave the overlay UI stale.
+    muteBtn.innerHTML = (video.muted || video.volume===0) ? ICONS.volumeMute : ICONS.volumeHigh;
+    volFill.style.width = (video.muted ? 0 : video.volume*100) + '%';
+    if(!isFs()) fitWindowedSize();
+  };
   document.addEventListener('fullscreenchange', syncFsIcon);
   document.addEventListener('webkitfullscreenchange', syncFsIcon);
 
@@ -1268,8 +1286,17 @@ function mountZoomableImage(container, src, alt){
   };
   const resetToFit = ()=>{ scale = fitScale; tx = 0; ty = 0; apply(); };
 
-  inBtn.addEventListener('click', ()=>zoomAt(1.4));
-  outBtn.addEventListener('click', ()=>zoomAt(1/1.4));
+  const stepZoom = delta=>{
+    // Snap to the nearest 10% first, then move by a full 10-point step —
+    // keeps the button-driven zoom on clean, predictable percentages
+    // (100%, 110%, 90%, ...) rather than odd multiplicative values.
+    const snapped = Math.round((scale*100)/10)*10;
+    scale = Math.max(minScale, Math.min(maxScale, (snapped+delta)/100));
+    clampPan();
+    apply();
+  };
+  inBtn.addEventListener('click', ()=>stepZoom(10));
+  outBtn.addEventListener('click', ()=>stepZoom(-10));
   resetBtn.addEventListener('click', resetToFit);
   wrap.addEventListener('wheel', e=>{
     e.preventDefault();
